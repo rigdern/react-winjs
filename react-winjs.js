@@ -15,6 +15,7 @@
 var React = require('react');
 
 var ReactWinJS = {};
+ReactWinJS.React = React;
 
 // Generated from https://github.com/rigdern/winjs-control-apis
 var RawControlApis = {
