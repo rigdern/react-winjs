@@ -10,6 +10,7 @@
 // - propTypes
 // - Should React be listed as a peerDependency instead of as a dependency?
 // - Does this project need a webpack config file?
+// - Enable setting of classNames and inline styles on control roots?
 
 var React = require('react');
 
@@ -352,7 +353,7 @@ function isEvent(propName) {
 function selectKeys(keys, obj) {
     var result = {};
     keys.forEach(function (k) {
-        if (obj[k] !== undefined) {
+        if (obj.hasOwnProperty(k)) {
             result[k] = obj[k];
         }
     });
@@ -377,6 +378,7 @@ var ControlApis = (function processRawApis() {
 function defineControl(controlName, options) {
     options = options || {};
     var tagName = options.tagName || "div";
+    var mounts = options.mounts || [];
 
     ReactWinJS[controlName] = React.createClass({
         shouldComponentUpdate: function () {
@@ -387,24 +389,34 @@ function defineControl(controlName, options) {
                 this.getDOMNode(),
                 selectKeys(ControlApis[controlName].properties, this.props)
             );
-            Object.keys(selectKeys(ControlApis[controlName].events, this.props)).forEach(function (eventName) {
-                this.winControl[eventName.toLowerCase()] = this.props[eventName];
+            ControlApis[controlName].events.forEach(function (eventName) {
+                if (this.props.hasOwnProperty(eventName)) {
+                    this.winControl[eventName.toLowerCase()] = this.props[eventName];
+                }
+            }, this);
+            Object.keys(mounts).forEach(function (propName) {
+                var getMountPoint = mounts[propName];
+                React.render(this.props[propName], getMountPoint(this.winControl));
             }, this);
         },
         componentWillUnmount: function () {
             this.winControl.dispose && this.winControl.dispose();
         },
         componentWillReceiveProps: function (nextProps) {
-            Object.keys(selectKeys(ControlApis[controlName].properties, nextProps)).forEach(function (propName) {
-                if (this.winControl[propName] !== nextProps[propName]) {
+            ControlApis[controlName].properties.forEach(function (propName) {
+                if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
                     this.winControl[propName] = nextProps[propName];
                 }
             }, this);
-            Object.keys(selectKeys(ControlApis[controlName].events, nextProps)).forEach(function (eventName) {
+            ControlApis[controlName].events.forEach(function (eventName) {
                 var lowerEventName = eventName.toLowerCase();
-                if (this.winControl[lowerEventName] !== nextProps[eventName]) {
+                if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
                     this.winControl[lowerEventName] = nextProps[eventName];
                 }
+            }, this);
+            Object.keys(mounts).forEach(function (propName) {
+                var getMountPoint = mounts[propName];
+                React.render(nextProps[propName], getMountPoint(this.winControl));
             }, this);
         },
         render: function() {
@@ -418,14 +430,26 @@ function defineControl(controlName, options) {
 defineControl("AutoSuggestBox");
 defineControl("BackButton", { tagName: "button" });
 // TODO: CellSpanningLayout
-// TODO: ContentDialog
-// TODO: DatePicker
+defineControl("ContentDialog", {
+    mounts: {
+        children: function (winControl) {
+            return winControl.element.querySelector(".win-contentdialog-content");
+        }
+    }
+});
+defineControl("DatePicker");
 // TODO: FlipView
 // TODO: Flyout
 // TODO: GridLayout
 // TODO: Hub
 // TODO: HubSection
-// TODO: ItemContainer
+defineControl("ItemContainer", {
+    mounts: {
+        children: function (winControl) {
+            return winControl.element.querySelector(".win-item");
+        }
+    }
+});
 // TODO: ListLayout
 // TODO: ListView
 // TODO: Menu
@@ -435,11 +459,20 @@ defineControl("BackButton", { tagName: "button" });
 // TODO: NavBarContainer
 // TODO: Pivot
 // TODO: PivotItem
-// TODO: Rating
-// TODO: SearchBox
+defineControl("Rating");
+defineControl("SearchBox");
 // TODO: SemanticZoom
-// TODO: SplitView
-// TODO: TimePicker
+defineControl("SplitView", {
+    mounts: {
+        paneComponent: function (winControl) {
+            return winControl.paneElement;
+        },
+        contentComponent: function (winControl) {
+            return winControl.contentElement;
+        }
+    }
+});
+defineControl("TimePicker");
 // TODO: ToggleSwitch
 // TODO: Tooltip
 
