@@ -380,7 +380,6 @@ function isEvent(propName) {
     return propName[0] === "o" && propName[1] === "n";
 }
 
-
 function selectKeys(keys, obj) {
     var result = {};
     keys.forEach(function (k) {
@@ -388,6 +387,13 @@ function selectKeys(keys, obj) {
             result[k] = obj[k];
         }
     });
+    return result;
+}
+
+function merge(a, b) {
+    var result = {};
+    for (k in a) { result[k] = a[k]; }
+    for (k in b) { result[k] = b[k]; }
     return result;
 }
 
@@ -468,6 +474,21 @@ function defineControl(controlName, options) {
     });
 }
 
+// Given a function that returns a React component,
+// returns an item renderer function that can be used
+// with WinJS controls.
+function makeReactItemRenderer(componentFunction) {
+    if (componentFunction) {
+        return function reactItemRenderer(itemPromise) {
+            var el = document.createElement("div");
+            componentFunction(itemPromise).then(function (component) {
+                React.render(component, el);
+            });
+            return el;
+        };
+    }
+}
+
 // TODO: AppBar
 // TODO: AppBarCommand
 defineControl("AutoSuggestBox");
@@ -481,7 +502,44 @@ defineControl("ContentDialog", {
     }
 });
 defineControl("DatePicker");
-// TODO: FlipView
+ReactWinJS.FlipView = React.createClass({
+    shouldComponentUpdate: function () {
+        return false;
+    },
+    componentDidMount: function () {
+        var props = merge(this.props, {
+            itemTemplate: makeReactItemRenderer(this.props.itemTemplate)
+        });
+        this.winControl = new WinJS.UI.FlipView(
+            this.getDOMNode(),
+            selectKeys(ControlApis.FlipView.properties, props)
+        );
+        ControlApis.FlipView.events.forEach(function (eventName) {
+            if (this.props.hasOwnProperty(eventName)) {
+                this.winControl[eventName.toLowerCase()] = this.props[eventName];
+            }
+        }, this);
+    },
+    componentWillUnmount: function () {
+        this.winControl.dispose && this.winControl.dispose();
+    },
+    componentWillReceiveProps: function (nextProps) {
+        ControlApis.FlipView.properties.forEach(function (propName) {
+            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
+                this.winControl[propName] = nextProps[propName];
+            }
+        }, this);
+        ControlApis.FlipView.events.forEach(function (eventName) {
+            var lowerEventName = eventName.toLowerCase();
+            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
+                this.winControl[lowerEventName] = nextProps[eventName];
+            }
+        }, this);
+    },
+    render: function() {
+        return React.DOM.div();
+    }
+});
 // TODO: Flyout
 // TODO: GridLayout
 
