@@ -22,6 +22,7 @@ var RawControlApis = {
         "closedDisplayMode",
         "commands",
         "disabled",
+        "element",
         "hidden",
         "layout",
         "onAfterHide",
@@ -33,6 +34,7 @@ var RawControlApis = {
     ],
     AppBarCommand: [
         "disabled",
+        "element",
         "extraClass",
         "firstElementFocus",
         "flyout",
@@ -41,7 +43,7 @@ var RawControlApis = {
         "id",
         "label",
         "lastElementFocus",
-        "onclick",
+        "onClick",
         "section",
         "selected",
         "tooltip",
@@ -50,6 +52,7 @@ var RawControlApis = {
     AutoSuggestBox: [
         "chooseSuggestionOnEnter",
         "disabled",
+        "element",
         "onQueryChanged",
         "onQuerySubmitted",
         "onResultSuggestionsChosen",
@@ -60,6 +63,7 @@ var RawControlApis = {
         "searchHistoryDisabled"
     ],
     BackButton: [
+        "element"
     ],
     CellSpanningLayout: [
         "groupHeaderPosition",
@@ -70,6 +74,7 @@ var RawControlApis = {
         "orientation"
     ],
     ContentDialog: [
+        "element",
         "hidden",
         "onAfterHide",
         "onAfterShow",
@@ -86,6 +91,7 @@ var RawControlApis = {
         "current",
         "datePattern",
         "disabled",
+        "element",
         "maxYear",
         "minYear",
         "monthPattern",
@@ -94,6 +100,7 @@ var RawControlApis = {
     ],
     FlipView: [
         "currentPage",
+        "element",
         "itemDataSource",
         "itemSpacing",
         "itemTemplate",
@@ -106,6 +113,7 @@ var RawControlApis = {
     Flyout: [
         "alignment",
         "anchor",
+        "element",
         "hidden",
         "onAfterHide",
         "onAfterShow",
@@ -126,6 +134,7 @@ var RawControlApis = {
         "orientation"
     ],
     Hub: [
+        "element",
         "headerTemplate",
         "indexOfFirstVisible",
         "indexOfLastVisible",
@@ -140,11 +149,14 @@ var RawControlApis = {
         "zoomableView"
     ],
     HubSection: [
+        "contentElement",
+        "element",
         "header",
         "isHeaderStatic"
     ],
     ItemContainer: [
         "draggable",
+        "element",
         "onInvoked",
         "onSelectionChanged",
         "onSelectionChanging",
@@ -167,6 +179,7 @@ var RawControlApis = {
     ListView: [
         "automaticallyLoadPages",
         "currentItem",
+        "element",
         "footer",
         "groupDataSource",
         "groupHeaderTapBehavior",
@@ -209,6 +222,7 @@ var RawControlApis = {
         "alignment",
         "anchor",
         "commands",
+        "element",
         "hidden",
         "onAfterHide",
         "onAfterShow",
@@ -218,18 +232,20 @@ var RawControlApis = {
     ],
     MenuCommand: [
         "disabled",
+        "element",
         "extraClass",
         "flyout",
         "hidden",
         "id",
         "label",
-        "onclick",
+        "onClick",
         "selected",
         "type"
     ],
     NavBar: [
         "commands",
         "disabled",
+        "element",
         "hidden",
         "layout",
         "onAfterHide",
@@ -241,6 +257,7 @@ var RawControlApis = {
         "sticky"
     ],
     NavBarCommand: [
+        "element",
         "icon",
         "label",
         "location",
@@ -252,6 +269,7 @@ var RawControlApis = {
     NavBarContainer: [
         "currentIndex",
         "data",
+        "element",
         "fixedSize",
         "layout",
         "maxRows",
@@ -260,6 +278,7 @@ var RawControlApis = {
         "template"
     ],
     Pivot: [
+        "element",
         "items",
         "locked",
         "onItemAnimationEnd",
@@ -270,11 +289,14 @@ var RawControlApis = {
         "title"
     ],
     PivotItem: [
+        "contentElement",
+        "element",
         "header"
     ],
     Rating: [
         "averageRating",
         "disabled",
+        "element",
         "enableClear",
         "maxRating",
         "onCancel",
@@ -286,6 +308,7 @@ var RawControlApis = {
     SearchBox: [
         "chooseSuggestionOnEnter",
         "disabled",
+        "element",
         "focusOnKeyboardInput",
         "onQueryChanged",
         "onQuerySubmitted",
@@ -298,6 +321,7 @@ var RawControlApis = {
         "searchHistoryDisabled"
     ],
     SemanticZoom: [
+        "element",
         "enableButton",
         "isDeclarativeControlContainer",
         "locked",
@@ -306,11 +330,14 @@ var RawControlApis = {
         "zoomedOut"
     ],
     SplitView: [
+        "contentElement",
+        "element",
         "hiddenDisplayMode",
         "onAfterHide",
         "onAfterShow",
         "onBeforeHide",
         "onBeforeShow",
+        "paneElement",
         "paneHidden",
         "panePlacement",
         "shownDisplayMode"
@@ -319,6 +346,7 @@ var RawControlApis = {
         "clock",
         "current",
         "disabled",
+        "element",
         "hourPattern",
         "minuteIncrement",
         "minutePattern",
@@ -328,12 +356,15 @@ var RawControlApis = {
     ToggleSwitch: [
         "checked",
         "disabled",
+        "element",
         "labelOff",
         "labelOn",
         "onChange",
         "title"
     ],
     Tooltip: [
+        "contentElement",
+        "element",
         "extraClass",
         "infotip",
         "innerHTML",
@@ -360,6 +391,14 @@ function selectKeys(keys, obj) {
     return result;
 }
 
+function endsWith(s, suffix) {
+    return s.length >= suffix.length && s.substr(-suffix.length) === suffix;
+}
+
+function keepProperty(propertyName) {
+    return !endsWith(propertyName.toLowerCase(), "element");
+}
+
 var ControlApis = (function processRawApis() {
     var result = {};
     Object.keys(RawControlApis).forEach(function (controlName) {
@@ -368,7 +407,11 @@ var ControlApis = (function processRawApis() {
             events: []
         };
         RawControlApis[controlName].forEach(function (propName) {
-            (isEvent(propName) ? entry.events : entry.properties).push(propName);
+            if (isEvent(propName)) {
+                entry.events.push(propName);
+            } else if (keepProperty(propName)) {
+                entry.properties.push(propName);
+            }
         });
         result[controlName] = entry;
     });
