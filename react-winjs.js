@@ -493,7 +493,7 @@ function makeReactItemRenderer(componentFunction) {
 // TODO: AppBarCommand
 defineControl("AutoSuggestBox");
 defineControl("BackButton", { tagName: "button" });
-// TODO: CellSpanningLayout
+// CellSpanningLayout: Not a component so just use off of WinJS.UI?
 defineControl("ContentDialog", {
     mounts: {
         children: function (winControl) {
@@ -541,7 +541,7 @@ ReactWinJS.FlipView = React.createClass({
     }
 });
 // TODO: Flyout
-// TODO: GridLayout
+// GridLayout: Not a component so just use off of WinJS.UI?
 
 // TODO: Revisit all of this diffing stuff:
 //   - Make it more efficient
@@ -720,8 +720,50 @@ defineControl("ItemContainer", {
         }
     }
 });
-// TODO: ListLayout
-// TODO: ListView
+// ListLayout: Not a component so just use off of WinJS.UI?
+// TODO: selection
+// TODO: Instead of diffing nextProps and current winControl value, should
+//       we diff nextProps and this.props when deciding whether or not to
+//       set the value no winControl? Implementing selection makes me think
+//       of this because selection.getIndicies() !== selection.getIndicies()
+ReactWinJS.ListView = React.createClass({
+    shouldComponentUpdate: function () {
+        return false;
+    },
+    componentDidMount: function () {
+        var props = merge(this.props, {
+            itemTemplate: makeReactItemRenderer(this.props.itemTemplate)
+        });
+        this.winControl = new WinJS.UI.ListView(
+            this.getDOMNode(),
+            selectKeys(ControlApis.ListView.properties, props)
+        );
+        ControlApis.ListView.events.forEach(function (eventName) {
+            if (this.props.hasOwnProperty(eventName)) {
+                this.winControl[eventName.toLowerCase()] = this.props[eventName];
+            }
+        }, this);
+    },
+    componentWillUnmount: function () {
+        this.winControl.dispose && this.winControl.dispose();
+    },
+    componentWillReceiveProps: function (nextProps) {
+        ControlApis.ListView.properties.forEach(function (propName) {
+            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
+                this.winControl[propName] = nextProps[propName];
+            }
+        }, this);
+        ControlApis.ListView.events.forEach(function (eventName) {
+            var lowerEventName = eventName.toLowerCase();
+            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
+                this.winControl[lowerEventName] = nextProps[eventName];
+            }
+        }, this);
+    },
+    render: function() {
+        return React.DOM.div();
+    }
+});
 // TODO: Menu
 // TODO: MenuCommand
 // TODO: NavBar
