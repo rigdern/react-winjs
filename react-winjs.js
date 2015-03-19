@@ -11,6 +11,9 @@
 // - Should React be listed as a peerDependency instead of as a dependency?
 // - Does this project need a webpack config file?
 // - Enable setting of classNames and inline styles on control roots?
+// - Instead of diffing nextProps and current winControl value, should
+//   we diff nextProps and this.props when deciding whether or not to
+//   set the value on winControl?
 
 var React = require('react');
 
@@ -474,21 +477,6 @@ function defineControl(controlName, options) {
     });
 }
 
-// Given a function that returns a React component,
-// returns an item renderer function that can be used
-// with WinJS controls.
-function makeReactItemRenderer(componentFunction) {
-    if (componentFunction) {
-        return function reactItemRenderer(itemPromise) {
-            var el = document.createElement("div");
-            componentFunction(itemPromise).then(function (component) {
-                React.render(component, el);
-            });
-            return el;
-        };
-    }
-}
-
 // TODO: AppBar
 // TODO: AppBarCommand
 defineControl("AutoSuggestBox");
@@ -502,44 +490,7 @@ defineControl("ContentDialog", {
     }
 });
 defineControl("DatePicker");
-ReactWinJS.FlipView = React.createClass({
-    shouldComponentUpdate: function () {
-        return false;
-    },
-    componentDidMount: function () {
-        var props = merge(this.props, {
-            itemTemplate: makeReactItemRenderer(this.props.itemTemplate)
-        });
-        this.winControl = new WinJS.UI.FlipView(
-            this.getDOMNode(),
-            selectKeys(ControlApis.FlipView.properties, props)
-        );
-        ControlApis.FlipView.events.forEach(function (eventName) {
-            if (this.props.hasOwnProperty(eventName)) {
-                this.winControl[eventName.toLowerCase()] = this.props[eventName];
-            }
-        }, this);
-    },
-    componentWillUnmount: function () {
-        this.winControl.dispose && this.winControl.dispose();
-    },
-    componentWillReceiveProps: function (nextProps) {
-        ControlApis.FlipView.properties.forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
-                this.winControl[propName] = nextProps[propName];
-            }
-        }, this);
-        ControlApis.FlipView.events.forEach(function (eventName) {
-            var lowerEventName = eventName.toLowerCase();
-            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
-                this.winControl[lowerEventName] = nextProps[eventName];
-            }
-        }, this);
-    },
-    render: function() {
-        return React.DOM.div();
-    }
-});
+defineControl("FlipView");
 // TODO: Flyout
 // GridLayout: Not a component so just use off of WinJS.UI?
 
@@ -721,49 +672,7 @@ defineControl("ItemContainer", {
     }
 });
 // ListLayout: Not a component so just use off of WinJS.UI?
-// TODO: selection
-// TODO: Instead of diffing nextProps and current winControl value, should
-//       we diff nextProps and this.props when deciding whether or not to
-//       set the value no winControl? Implementing selection makes me think
-//       of this because selection.getIndicies() !== selection.getIndicies()
-ReactWinJS.ListView = React.createClass({
-    shouldComponentUpdate: function () {
-        return false;
-    },
-    componentDidMount: function () {
-        var props = merge(this.props, {
-            itemTemplate: makeReactItemRenderer(this.props.itemTemplate)
-        });
-        this.winControl = new WinJS.UI.ListView(
-            this.getDOMNode(),
-            selectKeys(ControlApis.ListView.properties, props)
-        );
-        ControlApis.ListView.events.forEach(function (eventName) {
-            if (this.props.hasOwnProperty(eventName)) {
-                this.winControl[eventName.toLowerCase()] = this.props[eventName];
-            }
-        }, this);
-    },
-    componentWillUnmount: function () {
-        this.winControl.dispose && this.winControl.dispose();
-    },
-    componentWillReceiveProps: function (nextProps) {
-        ControlApis.ListView.properties.forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
-                this.winControl[propName] = nextProps[propName];
-            }
-        }, this);
-        ControlApis.ListView.events.forEach(function (eventName) {
-            var lowerEventName = eventName.toLowerCase();
-            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
-                this.winControl[lowerEventName] = nextProps[eventName];
-            }
-        }, this);
-    },
-    render: function() {
-        return React.DOM.div();
-    }
-});
+defineControl("ListView");
 // TODO: Menu
 // TODO: MenuCommand
 // TODO: NavBar
@@ -787,5 +696,19 @@ defineControl("SplitView", {
 defineControl("TimePicker");
 // TODO: ToggleSwitch
 // TODO: Tooltip
+
+// Given a function that returns a React component,
+// returns an item renderer function that can be used
+// with WinJS controls. Useful for describing FlipView
+// and ListView item templates as React components.
+ReactWinJS.reactRenderer = function reactRenderer(componentFunction) {
+    return function itemRenderer(itemPromise) {
+        return itemPromise.then(function (item) {
+            var element = document.createElement("div");
+            React.render(componentFunction(item), element);
+            return element;
+        });
+    }
+};
 
 module.exports = ReactWinJS;
