@@ -445,7 +445,7 @@ var ControlApis = (function processRawApis() {
 function defineControl(controlName, options) {
     options = options || {};
     var tagName = options.tagName || "div";
-    var mounts = options.mounts || [];
+    var mounts = options.mounts || {};
     var render = options.render || function () {
         return React.createElement(tagName);
     };
@@ -466,7 +466,7 @@ function defineControl(controlName, options) {
             }, this);
             Object.keys(mounts).forEach(function (propName) {
                 var getMountPoint = mounts[propName];
-                React.render(this.props[propName], getMountPoint.call(this, this.winControl));
+                React.render(this.props[propName], getMountPoint(this));
             }, this);
         },
         componentWillUnmount: function () {
@@ -486,7 +486,7 @@ function defineControl(controlName, options) {
             }, this);
             Object.keys(mounts).forEach(function (propName) {
                 var getMountPoint = mounts[propName];
-                React.render(nextProps[propName], getMountPoint.call(this, this.winControl));
+                React.render(nextProps[propName], getMountPoint(this));
             }, this);
         },
         render: function() {
@@ -502,8 +502,8 @@ defineControl("BackButton", { tagName: "button" });
 // CellSpanningLayout: Not a component so just use off of WinJS.UI?
 defineControl("ContentDialog", {
     mounts: {
-        children: function (winControl) {
-            return winControl.element.querySelector(".win-contentdialog-content");
+        children: function (component) {
+            return component.winControl.element.querySelector(".win-contentdialog-content");
         }
     }
 });
@@ -520,8 +520,8 @@ defineControl("Flyout", {
         return React.DOM.div(null, React.DOM.div({ ref: "content"}));
     },
     mounts: {
-        children: function (winControl) {
-            return this.refs.content.getDOMNode();
+        children: function (component) {
+            return component.refs.content.getDOMNode();
         }
     }
 });
@@ -699,8 +699,8 @@ ReactWinJS.HubSection = React.createClass({
 
 defineControl("ItemContainer", {
     mounts: {
-        children: function (winControl) {
-            return winControl.element.querySelector(".win-item");
+        children: function (component) {
+            return component.winControl.element.querySelector(".win-item");
         }
     }
 });
@@ -718,11 +718,11 @@ defineControl("SearchBox");
 // TODO: SemanticZoom
 defineControl("SplitView", {
     mounts: {
-        paneComponent: function (winControl) {
-            return winControl.paneElement;
+        paneComponent: function (component) {
+            return component.winControl.paneElement;
         },
-        contentComponent: function (winControl) {
-            return winControl.contentElement;
+        contentComponent: function (component) {
+            return component.winControl.contentElement;
         }
     }
 });
