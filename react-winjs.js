@@ -13,7 +13,22 @@
 // - Enable setting of classNames and inline styles on control roots?
 // - Instead of diffing nextProps and current winControl value, should
 //   we diff nextProps and this.props when deciding whether or not to
-//   set the value on winControl?
+//   set the value on winControl? This would benefit FlipView.itemTemplate because currently
+//   getting FlipView.itemTemplate does not necessarily give you the value you wrote to it.
+// - What if we modeled dismissables like this? Instead of the app having to call hide/show,
+//   the app could render a special element for all dismissables (e.g. Dismissables) and when
+//   a dismissable is rendered into there, it will be shown. When it is no longer rendered
+//   in there, it will be hidden and removed from the DOM when its hide animation completes.
+//   This only makes sense for things that hide/show not for things that close/open because
+//   the latter need to be rendered even they're closed. Example:
+//     <Dismissables>
+//       <Flyout key="myFlyout">
+//         This is a Flyout!
+//       </Flyout>
+//       <ContentDialog key="myDialog">
+//         This is a ContentDialog!
+//       </ContentDialog>
+//     </Dismissables>
 
 var React = require('react');
 
@@ -431,6 +446,9 @@ function defineControl(controlName, options) {
     options = options || {};
     var tagName = options.tagName || "div";
     var mounts = options.mounts || [];
+    var render = options.render || function () {
+        return React.createElement(tagName);
+    };
 
     ReactWinJS[controlName] = React.createClass({
         shouldComponentUpdate: function () {
@@ -448,7 +466,7 @@ function defineControl(controlName, options) {
             }, this);
             Object.keys(mounts).forEach(function (propName) {
                 var getMountPoint = mounts[propName];
-                React.render(this.props[propName], getMountPoint(this.winControl));
+                React.render(this.props[propName], getMountPoint.call(this, this.winControl));
             }, this);
         },
         componentWillUnmount: function () {
@@ -468,11 +486,11 @@ function defineControl(controlName, options) {
             }, this);
             Object.keys(mounts).forEach(function (propName) {
                 var getMountPoint = mounts[propName];
-                React.render(nextProps[propName], getMountPoint(this.winControl));
+                React.render(nextProps[propName], getMountPoint.call(this, this.winControl));
             }, this);
         },
         render: function() {
-            return React.createElement(tagName);
+            return render();
         }
     });
 }
@@ -491,7 +509,22 @@ defineControl("ContentDialog", {
 });
 defineControl("DatePicker");
 defineControl("FlipView");
-// TODO: Flyout
+defineControl("Flyout", {
+    // The WinJS Flyout control doesn't come with a good mount point.
+    // App content and control content are siblings in Flyout.element.
+    // Consequently, if React rendered to Flyout.element, it would destroy
+    // some of Flyout's elements. To fix this, we give Flyout a div (ref="content")
+    // which will contain only app content. The React component renders into this
+    // div so it doesn't destroy any control content.
+    render: function () {
+        return React.DOM.div(null, React.DOM.div({ ref: "content"}));
+    },
+    mounts: {
+        children: function (winControl) {
+            return this.refs.content.getDOMNode();
+        }
+    }
+});
 // GridLayout: Not a component so just use off of WinJS.UI?
 
 // TODO: Revisit all of this diffing stuff:
