@@ -727,8 +727,59 @@ defineControl("SplitView", {
     }
 });
 defineControl("TimePicker");
-// TODO: ToggleSwitch
-// TODO: Tooltip
+defineControl("ToggleSwitch");
+/*defineControl("Tooltip", {
+    mounts: {
+        children: function (component) {
+            return component.winControl.element;
+        }
+    }
+});*/
+// TODO: Refactor. Instead of "mounts", perhaps defineControl needs a way
+// to specify arbitrary functions for handling props. A "mount" would be 1
+// way to handle a prop. How can Tooltip component intialize contentElement?
+// Should defineControl have an init/componentDidMount hook?
+ReactWinJS.Tooltip = React.createClass({
+    shouldComponentUpdate: function () {
+        return false;
+    },
+    componentDidMount: function () {
+        this.winControl = new WinJS.UI.Tooltip(
+            this.getDOMNode(),
+            selectKeys(ControlApis.Tooltip.properties, this.props)
+        );
+        ControlApis.Tooltip.events.forEach(function (eventName) {
+            if (this.props.hasOwnProperty(eventName)) {
+                this.winControl[eventName.toLowerCase()] = this.props[eventName];
+            }
+        }, this);
+        React.render(this.props.children, this.winControl.element);
+        var contentElement = document.createElement("div");
+        React.render(this.props.contentComponent, contentElement);
+        this.winControl.contentElement = contentElement;
+    },
+    componentWillUnmount: function () {
+        this.winControl.dispose && this.winControl.dispose();
+    },
+    componentWillReceiveProps: function (nextProps) {
+        ControlApis.Tooltip.properties.forEach(function (propName) {
+            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
+                this.winControl[propName] = nextProps[propName];
+            }
+        }, this);
+        ControlApis.Tooltip.events.forEach(function (eventName) {
+            var lowerEventName = eventName.toLowerCase();
+            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
+                this.winControl[lowerEventName] = nextProps[eventName];
+            }
+        }, this);
+        React.render(nextProps.children, this.winControl.element);
+        React.render(nextProps.contentComponent, this.winControl.contentElement);
+    },
+    render: function() {
+        return React.DOM.div();
+    }
+});
 
 // Given a function that returns a React component,
 // returns an item renderer function that can be used
