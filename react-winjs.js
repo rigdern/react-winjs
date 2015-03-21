@@ -47,6 +47,12 @@
 //   undefined to the underlying control for that one render? (if the prop is omitted from
 //   the next render as well, we shouldn't have to pass it along because we already "cleared"
 //   it)
+// - Should have special initialization propHandlers that would get to influence what gets
+//   passed in the options parameter to the control's constructer? Use cases:
+//   - Initialize Hub's BindingList (rather than editing it immediately after construction)
+//   - Initialize-only parameters (e.g. Command's type). Ideally, the control would just
+//     rerender/reinstantiate itself as needed but I'm not sure how to do that in the
+//     ICommand.type case.
 
 var React = require('react');
 
@@ -547,7 +553,7 @@ defineControl("Flyout", {
     // which will contain only app content. The React component renders into this
     // div so it doesn't destroy any control content.
     render: function () {
-        return React.DOM.div(null, React.DOM.div({ ref: "content"}));
+        return React.DOM.div(null, React.DOM.div({ ref: "content" }));
     },
     propHandlers: {
         children: PropHandlers.mountTo(function (component) {
@@ -632,72 +638,35 @@ function applyEditsToBindingList(list, edits) {
     }, this);
 }
 
-ReactWinJS.Hub = React.createClass({
-    shouldComponentUpdate: function () {
-        return false;
-    },
-    componentDidMount: function () {
-        this.winControl = new WinJS.UI.Hub(
-            this.getDOMNode(),
-            selectKeys(ControlApis.Hub.properties, this.props)
-        );
-        ControlApis.Hub.events.forEach(function (eventName) {
-            if (this.props.hasOwnProperty(eventName)) {
-                this.winControl[eventName.toLowerCase()] = this.props[eventName];
-            }
-        }, this);
-        this.hubSectionRoots = [];
-        this.hubSectionRootsMap = {};
-        React.Children.forEach(this.props.children, function (component) {
-            if (component) {
-                var root = new HubSectionRoot(component);
-                this.hubSectionRoots.push(root);
-                this.hubSectionRootsMap[component.key] = root;
-                this.winControl.sections.push(root.winControl);
-            }
-        }, this);
-    },
-    componentWillUnmount: function () {
-        this.winControl.dispose && this.winControl.dispose();
-    },
-    componentWillReceiveProps: function (nextProps) {
-        ControlApis.Hub.properties.forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
-                this.winControl[propName] = nextProps[propName];
-            }
-        }, this);
-        ControlApis.Hub.events.forEach(function (eventName) {
-            var lowerEventName = eventName.toLowerCase();
-            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
-                this.winControl[lowerEventName] = nextProps[eventName];
-            }
-        }, this);
+defineControl("Hub", {
+    propHandlers: {
+        children: function (component, propValue) {
+            var oldHubSectionRoots = component .hubSectionRoots || [];
+            var oldHubSectionRootsMap = component .hubSectionRootsMap || {};
+            var newHubSectionRoots = [];
+            var newHubSectionRootsMap = {};
 
-        var newHubSectionRoots = [];
-        var newHubSectionRootsMap = {};
-        React.Children.forEach(nextProps.children, function (component) {
-            if (component) {
-                var root = this.hubSectionRootsMap[component.key];
-                if (root) {
-                    root.update(component);
-                } else {
-                    root = new HubSectionRoot(component);
+            React.Children.forEach(propValue, function (component) {
+                if (component) {
+                    var root = oldHubSectionRootsMap[component.key];
+                    if (root) {
+                        root.update(component);
+                    } else {
+                        root = new HubSectionRoot(component);
+                    }
+                    newHubSectionRoots.push(root);
+                    newHubSectionRootsMap[component.key] = root;
                 }
-                newHubSectionRoots.push(root);
-                newHubSectionRootsMap[component.key] = root;
-            }
-        }, this);
+            });
 
-        applyEditsToBindingList(
-            this.winControl.sections,
-            diffArraysByKey(this.hubSectionRoots, newHubSectionRoots)
-        );
-        
-        this.hubSectionRoots = newHubSectionRoots;
-        this.hubSectionRootsMap = newHubSectionRootsMap;
-    },
-    render: function() {
-        return React.DOM.div();
+            applyEditsToBindingList(
+                component.winControl.sections,
+                diffArraysByKey(oldHubSectionRoots, newHubSectionRoots)
+            );
+            
+            component.hubSectionRoots = newHubSectionRoots;
+            component.hubSectionRootsMap = newHubSectionRootsMap;
+        }
     }
 });
 var HubSectionRoot = function (component) {
