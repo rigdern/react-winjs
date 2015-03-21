@@ -29,6 +29,24 @@
 //         This is a ContentDialog!
 //       </ContentDialog>
 //     </Dismissables>
+// - Adaptive apps. In adaptive apps, you want to render certain components at some screen
+//   sizes but not at others. For cheap WinJS controls, reinstantiating the control during
+//   resize when it is needed may be fine. However, this pattern may not work well for
+//   expensive controls like the ListView. We'd want more of a lazy init pattern:
+//     - If the control isn't needed at this screen size, don't render it.
+//     - When the control is needed, instatiate it.
+//     - When the control isn't needed anymore, hide it (display: none).
+//     - When the control is needed again, show it (display: block) and call forceLayout()
+//   react-winjs could add a special prop to handle all of the details of this pattern for
+//   you with a special prop (e.g. displayNone). It could look like this:
+//     <ListView
+//       displayNone={this.state.shouldHideListViewAtThisScreenSize}
+//       itemDataSource={this.state.itemDataSource}
+//       itemTemplate={this.itemTemplate} />
+// - What do we do when a prop is removed from one render to the next? Do we need to pass
+//   undefined to the underlying control for that one render? (if the prop is omitted from
+//   the next render as well, we shouldn't have to pass it along because we already "cleared"
+//   it)
 
 var React = require('react');
 
@@ -442,10 +460,18 @@ var ControlApis = (function processRawApis() {
     return result;
 })();
 
+var PropHandlers = {
+    mountTo: function PropHandlers_mountTo(getMountPoint) {
+        return function mountTo(component, propValue) {
+            React.render(propValue, getMountPoint(component));
+        };
+    }
+};
+
 function defineControl(controlName, options) {
     options = options || {};
     var tagName = options.tagName || "div";
-    var mounts = options.mounts || {};
+    var propHandlers = options.propHandlers || {};
     var render = options.render || function () {
         return React.createElement(tagName);
     };
@@ -464,9 +490,11 @@ function defineControl(controlName, options) {
                     this.winControl[eventName.toLowerCase()] = this.props[eventName];
                 }
             }, this);
-            Object.keys(mounts).forEach(function (propName) {
-                var getMountPoint = mounts[propName];
-                React.render(this.props[propName], getMountPoint(this));
+            Object.keys(propHandlers).forEach(function (propName) {
+                if (this.props.hasOwnProperty(propName)) {
+                    var handleProp = propHandlers[propName];
+                    handleProp(this, this.props[propName]);
+                }
             }, this);
         },
         componentWillUnmount: function () {
@@ -484,9 +512,11 @@ function defineControl(controlName, options) {
                     this.winControl[lowerEventName] = nextProps[eventName];
                 }
             }, this);
-            Object.keys(mounts).forEach(function (propName) {
-                var getMountPoint = mounts[propName];
-                React.render(nextProps[propName], getMountPoint(this));
+            Object.keys(propHandlers).forEach(function (propName) {
+                if (this.props.hasOwnProperty(propName)) {
+                    var handleProp = propHandlers[propName];
+                    handleProp(this, nextProps[propName]);
+                }
             }, this);
         },
         render: function() {
@@ -501,10 +531,10 @@ defineControl("AutoSuggestBox");
 defineControl("BackButton", { tagName: "button" });
 // CellSpanningLayout: Not a component so just use off of WinJS.UI?
 defineControl("ContentDialog", {
-    mounts: {
-        children: function (component) {
+    propHandlers: {
+        children: PropHandlers.mountTo(function (component) {
             return component.winControl.element.querySelector(".win-contentdialog-content");
-        }
+        })
     }
 });
 defineControl("DatePicker");
@@ -519,10 +549,10 @@ defineControl("Flyout", {
     render: function () {
         return React.DOM.div(null, React.DOM.div({ ref: "content"}));
     },
-    mounts: {
-        children: function (component) {
+    propHandlers: {
+        children: PropHandlers.mountTo(function (component) {
             return component.refs.content.getDOMNode();
-        }
+        })
     }
 });
 // GridLayout: Not a component so just use off of WinJS.UI?
@@ -698,10 +728,10 @@ ReactWinJS.HubSection = React.createClass({
 });
 
 defineControl("ItemContainer", {
-    mounts: {
-        children: function (component) {
+    propHandlers: {
+        children: PropHandlers.mountTo(function (component) {
             return component.winControl.element.querySelector(".win-item");
-        }
+        })
     }
 });
 // ListLayout: Not a component so just use off of WinJS.UI?
@@ -717,67 +747,28 @@ defineControl("Rating");
 defineControl("SearchBox");
 // TODO: SemanticZoom
 defineControl("SplitView", {
-    mounts: {
-        paneComponent: function (component) {
+    propHandlers: {
+        paneComponent: PropHandlers.mountTo(function (component) {
             return component.winControl.paneElement;
-        },
-        contentComponent: function (component) {
+        }),
+        contentComponent: PropHandlers.mountTo(function (component) {
             return component.winControl.contentElement;
-        }
+        })
     }
 });
 defineControl("TimePicker");
 defineControl("ToggleSwitch");
-/*defineControl("Tooltip", {
-    mounts: {
-        children: function (component) {
+defineControl("Tooltip", {
+    propHandlers: {
+        children: PropHandlers.mountTo(function (component) {
             return component.winControl.element;
+        }),
+        contentComponent: function (component, propValue) {
+            if (!component.winControl.contentElement) {
+                component.winControl.contentElement = document.createElement("div");
+            }
+            React.render(propValue, component.winControl.contentElement);
         }
-    }
-});*/
-// TODO: Refactor. Instead of "mounts", perhaps defineControl needs a way
-// to specify arbitrary functions for handling props. A "mount" would be 1
-// way to handle a prop. How can Tooltip component intialize contentElement?
-// Should defineControl have an init/componentDidMount hook?
-ReactWinJS.Tooltip = React.createClass({
-    shouldComponentUpdate: function () {
-        return false;
-    },
-    componentDidMount: function () {
-        this.winControl = new WinJS.UI.Tooltip(
-            this.getDOMNode(),
-            selectKeys(ControlApis.Tooltip.properties, this.props)
-        );
-        ControlApis.Tooltip.events.forEach(function (eventName) {
-            if (this.props.hasOwnProperty(eventName)) {
-                this.winControl[eventName.toLowerCase()] = this.props[eventName];
-            }
-        }, this);
-        React.render(this.props.children, this.winControl.element);
-        var contentElement = document.createElement("div");
-        React.render(this.props.contentComponent, contentElement);
-        this.winControl.contentElement = contentElement;
-    },
-    componentWillUnmount: function () {
-        this.winControl.dispose && this.winControl.dispose();
-    },
-    componentWillReceiveProps: function (nextProps) {
-        ControlApis.Tooltip.properties.forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName) && this.winControl[propName] !== nextProps[propName]) {
-                this.winControl[propName] = nextProps[propName];
-            }
-        }, this);
-        ControlApis.Tooltip.events.forEach(function (eventName) {
-            var lowerEventName = eventName.toLowerCase();
-            if (nextProps.hasOwnProperty(eventName) && this.winControl[lowerEventName] !== nextProps[eventName]) {
-                this.winControl[lowerEventName] = nextProps[eventName];
-            }
-        }, this);
-        React.render(nextProps.children, this.winControl.element);
-        React.render(nextProps.contentComponent, this.winControl.contentElement);
-    },
-    render: function() {
-        return React.DOM.div();
     }
 });
 
