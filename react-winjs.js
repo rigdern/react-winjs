@@ -466,6 +466,81 @@ var ControlApis = (function processRawApis() {
     return result;
 })();
 
+// TODO: Revisit all of this diffing stuff:
+//   - Make it more efficient
+//   - It's currently hard to understand because it makes aggressive
+//     assumptions (e.g. each item has a key and each item has a winControl)
+//   - Is it correct?
+//   - Should we just sync an array with a binding list instead of computing
+//     edits based on 2 arrays and then applying them to a binding list?
+function buildIndex(array) {
+    var index = {};
+    array.forEach(function (item, i) {
+        index[item.key] = i;
+    });
+    return index;
+}
+function indexOfKey(array, key) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i].key === key) {
+            return i;
+        }
+    }
+    return -1;
+}
+function diffArraysByKey(old, latest) {
+    old = old.slice(0);
+    var oldIndex = buildIndex(old);
+    var latestIndex = buildIndex(latest);
+    var edits = [];
+
+    // Handle removals
+    for (i = old.length - 1; i >= 0; i--) {
+        var item = old[i];
+        if (!latestIndex.hasOwnProperty(item.key)) {
+            edits.push({ type: "delete", index: i });
+            console.log(JSON.stringify(edits[edits.length - 1]));
+            old.splice(i, 1);
+        }
+    }
+
+    // Handle insertions and moves
+    for (i = 0; i < latest.length; i++) {
+        var item = latest[i];
+        if (!oldIndex.hasOwnProperty(item.key)) {
+            // Insertion
+            edits.push({ type: "insert", index: i, value: item });
+            console.log(JSON.stringify({ type: "insert", index: i, value: item.key }));
+            old.splice(i, 0, item);
+        } else if (old[i].key !== item.key) {
+            // Move
+            //edits.push({ type: "move", from: oldIndex[item.key], to: i });
+            //old.splice(oldIndex[item.key], 1);
+
+            var fromIndex = indexOfKey(old, item.key);
+            edits.push({ type: "move", from: fromIndex, to: i });
+            console.log(JSON.stringify(edits[edits.length - 1]));
+            old.splice(fromIndex, 1);
+            old.splice(i, 0, item);
+        }
+    }
+
+    return edits;
+}
+function applyEditsToBindingList(list, edits) {
+    edits.forEach(function (edit) {
+        if (edit.type === "delete") {
+            list.splice(edit.index, 1);
+        } else if (edit.type === "insert") {
+            list.splice(edit.index, 0, edit.value.winControl);
+        } else if (edit.type === "move") {
+            list.move(edit.from, edit.to);
+        } else {
+            throw "Unsupported edit type: " + edit.type;
+        }
+    }, this);
+}
+
 // interface IWinJSComponent {
 //     winControl
 //     data
@@ -649,82 +724,6 @@ defineControl("Flyout", {
     }
 });
 // GridLayout: Not a component so just use off of WinJS.UI?
-
-// TODO: Revisit all of this diffing stuff:
-//   - Make it more efficient
-//   - It's currently hard to understand because it makes aggressive
-//     assumptions (e.g. each item has a key and each item has a winControl)
-//   - Is it correct?
-//   - Should we just sync an array with a binding list instead of computing
-//     edits based on 2 arrays and then applying them to a binding list?
-function buildIndex(array) {
-    var index = {};
-    array.forEach(function (item, i) {
-        index[item.key] = i;
-    });
-    return index;
-}
-function indexOfKey(array, key) {
-    for (var i = 0; i < array.length; i++) {
-        if (array[i].key === key) {
-            return i;
-        }
-    }
-    return -1;
-}
-function diffArraysByKey(old, latest) {
-    old = old.slice(0);
-    var oldIndex = buildIndex(old);
-    var latestIndex = buildIndex(latest);
-    var edits = [];
-
-    // Handle removals
-    for (i = old.length - 1; i >= 0; i--) {
-        var item = old[i];
-        if (!latestIndex.hasOwnProperty(item.key)) {
-            edits.push({ type: "delete", index: i });
-            console.log(JSON.stringify(edits[edits.length - 1]));
-            old.splice(i, 1);
-        }
-    }
-
-    // Handle insertions and moves
-    for (i = 0; i < latest.length; i++) {
-        var item = latest[i];
-        if (!oldIndex.hasOwnProperty(item.key)) {
-            // Insertion
-            edits.push({ type: "insert", index: i, value: item });
-            console.log(JSON.stringify({ type: "insert", index: i, value: item.key }));
-            old.splice(i, 0, item);
-        } else if (old[i].key !== item.key) {
-            // Move
-            //edits.push({ type: "move", from: oldIndex[item.key], to: i });
-            //old.splice(oldIndex[item.key], 1);
-
-            var fromIndex = indexOfKey(old, item.key);
-            edits.push({ type: "move", from: fromIndex, to: i });
-            console.log(JSON.stringify(edits[edits.length - 1]));
-            old.splice(fromIndex, 1);
-            old.splice(i, 0, item);
-        }
-    }
-
-    return edits;
-}
-function applyEditsToBindingList(list, edits) {
-    edits.forEach(function (edit) {
-        if (edit.type === "delete") {
-            list.splice(edit.index, 1);
-        } else if (edit.type === "insert") {
-            list.splice(edit.index, 0, edit.value.winControl);
-        } else if (edit.type === "move") {
-            list.move(edit.from, edit.to);
-        } else {
-            throw "Unsupported edit type: " + edit.type;
-        }
-    }, this);
-}
-
 defineControl("Hub", {
     propHandlers: {
         children: PropHandlers.syncChildrenWithBindingList("sections")
