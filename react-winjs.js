@@ -57,7 +57,6 @@
 var React = require('react');
 
 var ReactWinJS = {};
-ReactWinJS.React = React;
 
 // Generated from https://github.com/rigdern/winjs-control-apis
 var RawControlApis = {
@@ -522,10 +521,9 @@ var PropHandlers = {
 
 function defineControl(controlName, options) {
     options = options || {};
-    var tagName = options.tagName || "div";
     var propHandlers = options.propHandlers || {};
     var render = options.render || function (component) {
-        return React.createElement(tagName);
+        return React.DOM.div();
     };
 
     function update(winjsComponent, nextProps) {
@@ -618,7 +616,11 @@ defineControl("AppBarCommand", {
     }
 });
 defineControl("AutoSuggestBox");
-defineControl("BackButton", { tagName: "button" });
+defineControl("BackButton", {
+    render: function (component) {
+        return React.DOM.button();
+    }
+});
 // CellSpanningLayout: Not a component so just use off of WinJS.UI?
 defineControl("ContentDialog", {
     propHandlers: {
