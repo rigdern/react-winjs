@@ -443,6 +443,21 @@ function endsWith(s, suffix) {
     return s.length >= suffix.length && s.substr(-suffix.length) === suffix;
 }
 
+function arraysShallowEqual(a, b) {
+    if (a === b) {
+        return true;
+    } else if (a.length !== b.length) {
+        return false;
+    } else {
+        for (var i = 0, len = a.length; i < len; i++) {
+            if (a[i] !== b[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 function keepProperty(propertyName) {
     return !endsWith(propertyName.toLowerCase(), "element");
 }
@@ -676,7 +691,38 @@ WinJSChildComponent.prototype.update = function (component) {
     component.type.update(this, component.props);
 };
 
-// TODO: AppBar
+defineControl("AppBar", {
+    propHandlers: {
+        children: function (winjsComponent, propValue) {
+            var oldChildComponents = winjsComponent.data.winjsChildComponents || [];
+            var oldChildComponentsMap = winjsComponent.data.winjsChildComponentsMap || {};
+            var newChildComponents = [];
+            var newChildComponentsMap = {};
+
+            React.Children.forEach(propValue, function (component) {
+                if (component) {
+                    var winjsChildComponent = oldChildComponentsMap[component.key];
+                    if (winjsChildComponent) {
+                        winjsChildComponent.update(component);
+                    } else {
+                        winjsChildComponent = new WinJSChildComponent(component);
+                    }
+                    newChildComponents.push(winjsChildComponent);
+                    newChildComponentsMap[component.key] = winjsChildComponent;
+                }
+            });
+
+            if (!arraysShallowEqual(oldChildComponents, newChildComponents)) {
+                winjsComponent.winControl.commands = newChildComponents.map(function (winjsChildComponent) {
+                    return winjsChildComponent.winControl;
+                });
+            
+                winjsComponent.data.winjsChildComponents = newChildComponents;
+                winjsComponent.data.winjsChildComponentsMap = newChildComponentsMap;
+            }
+        }
+    }
+});
 // TODO: Can't change AppBarCommand.type on the fly (initialize only)
 // TODO: AppBarCommand.flyout doesn't work
 defineControl("AppBarCommand", {
