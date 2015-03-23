@@ -478,7 +478,7 @@ function defineControl(controlName, options) {
     options = options || {};
     var tagName = options.tagName || "div";
     var propHandlers = options.propHandlers || {};
-    var render = options.render || function () {
+    var render = options.render || function (component) {
         return React.createElement(tagName);
     };
 
@@ -526,7 +526,7 @@ function defineControl(controlName, options) {
             }, this);
         },
         render: function() {
-            return render();
+            return render(this);
         }
     });
 }
@@ -552,7 +552,7 @@ defineControl("Flyout", {
     // some of Flyout's elements. To fix this, we give Flyout a div (ref="content")
     // which will contain only app content. The React component renders into this
     // div so it doesn't destroy any control content.
-    render: function () {
+    render: function (component) {
         return React.DOM.div(null, React.DOM.div({ ref: "content" }));
     },
     propHandlers: {
@@ -705,8 +705,23 @@ defineControl("ItemContainer", {
 });
 // ListLayout: Not a component so just use off of WinJS.UI?
 defineControl("ListView");
-// TODO: Menu
-// TODO: MenuCommand
+defineControl("Menu", {
+    propHandlers: {
+        children: function (component, propValue) {
+            React.render(React.DOM.div(null, propValue), component.winControl.element);
+        }
+    }
+});
+// TODO: Can't change MenuCommand on the fly (initialize only)
+// TODO: MenuCommand.flyout doesn't work
+defineControl("MenuCommand", {
+    render: function (component) {
+        var tagName = component.props.type === "separator" ?
+            "hr" :
+            "button";
+        return React.createElement(tagName);
+    }
+});
 // TODO: NavBar
 // TODO: NavBarCommand
 // TODO: NavBarContainer
