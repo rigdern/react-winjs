@@ -679,6 +679,9 @@ function defineControl(controlName, options) {
 // TODO: Is there a better way to solve this problem that WinJSChildComponent solves?
 function WinJSChildComponent(component) { // implements IWinJSChildComponent
     var instance = React.render(component, document.createElement("div"));
+    // TODO: The technique of the above line causes React to generate warnings that look
+    // like this:
+    //   ReactMount: Root element has been removed from its original container. New container: 
     this.winControl = instance.winControl;
     this.data = instance.data;
     this.key = component.key;
@@ -831,8 +834,18 @@ defineControl("NavBarContainer", {
         children: PropHandlers.syncChildrenWithBindingList("data")
     }
 });
-// TODO: Pivot
-// TODO: PivotItem
+defineControl("Pivot", {
+    propHandlers: {
+        children: PropHandlers.syncChildrenWithBindingList("items")
+    }
+});
+defineControl("PivotItem", {
+    propHandlers: {
+        children: PropHandlers.mountTo(function (winjsComponent) {
+            return winjsComponent.winControl.contentElement;
+        })
+    }
+});
 defineControl("Rating");
 defineControl("SearchBox");
 // TODO: SemanticZoom
