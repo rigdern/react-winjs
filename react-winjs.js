@@ -464,6 +464,16 @@ function arraysShallowEqual(a, b) {
     }
 }
 
+function makeClassSet(className) {
+    var classSet = {};
+    className && className.split(" ").forEach(function (aClass) {
+        if (aClass) {
+            classSet[aClass] = true;
+        }
+    });
+    return classSet;
+}
+
 function keepProperty(propertyName) {
     return !endsWith(propertyName.toLowerCase(), "element");
 }
@@ -625,23 +635,51 @@ function defineControl(controlName, options) {
     function update(winjsComponent, nextProps) {
         var winControl = winjsComponent.winControl;
 
+        // Properties
+        //
         ControlApis[controlName].properties.forEach(function (propName) {
             if (nextProps.hasOwnProperty(propName) && winControl[propName] !== nextProps[propName]) {
                 winControl[propName] = nextProps[propName];
             }
-        }, this);
+        });
+
+        // Events
+        //
         ControlApis[controlName].events.forEach(function (eventName) {
             var lowerEventName = eventName.toLowerCase();
             if (nextProps.hasOwnProperty(eventName) && winControl[lowerEventName] !== nextProps[eventName]) {
                 winControl[lowerEventName] = nextProps[eventName];
             }
         });
+
+        // propHandlers
+        //
         Object.keys(propHandlers).forEach(function (propName) {
             if (nextProps.hasOwnProperty(propName)) {
                 var handleProp = propHandlers[propName];
                 handleProp(winjsComponent, nextProps[propName]);
             }
         });
+
+        // className
+        //  Enable the addition and removal of CSS classes on the root of the winControl
+        //  but don't clobber whatever CSS classes the underlying control may have added
+        //  (e.g. don't clobber win-listview).
+        //
+        var elementClassList = winjsComponent.winControl.element.classList;
+        var oldClassSet = winjsComponent.data.classSet;
+        var newClassSet = makeClassSet(nextProps.className);
+        for (var className in oldClassSet) {
+            if (!newClassSet[className]) {
+                elementClassList.remove(className);
+            }
+        }
+        for (var className in newClassSet) {
+            if (!oldClassSet[className]) {
+                elementClassList.add(className);
+            }
+        }
+        winjsComponent.data.classSet = newClassSet;
     }
 
     ReactWinJS[controlName] = React.createClass({
@@ -654,21 +692,37 @@ function defineControl(controlName, options) {
         },
         componentDidMount: function () {
             this.data = {};
+
+            // Properties
+            //
             this.winControl = new WinJS.UI[controlName](
                 this.getDOMNode(),
                 selectKeys(ControlApis[controlName].properties, this.props)
             );
+
+            // Events
+            //
             ControlApis[controlName].events.forEach(function (eventName) {
                 if (this.props.hasOwnProperty(eventName)) {
                     this.winControl[eventName.toLowerCase()] = this.props[eventName];
                 }
             }, this);
+
+            // propHandlers
+            //
             Object.keys(propHandlers).forEach(function (propName) {
                 if (this.props.hasOwnProperty(propName)) {
                     var handleProp = propHandlers[propName];
                     handleProp(this, this.props[propName]);
                 }
             }, this);
+
+            // className
+            //
+            this.data.classSet = makeClassSet(this.props.className);
+            if (this.props.className) {
+                this.getDOMNode().className += " " + this.props.className;
+            }
         },
         componentWillUnmount: function () {
             this.winControl.dispose && this.winControl.dispose();
