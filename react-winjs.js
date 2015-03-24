@@ -404,6 +404,12 @@ var RawControlApis = {
         "onChange",
         "title"
     ],
+    ToolBar: [
+        "data",
+        "element",
+        "extraClass",
+        "shownDisplayMode"
+    ],
     Tooltip: [
         "contentElement",
         "element",
@@ -861,6 +867,11 @@ defineControl("SplitView", {
 });
 defineControl("TimePicker");
 defineControl("ToggleSwitch");
+defineControl("ToolBar", {
+    propHandlers: {
+        children: PropHandlers.syncChildrenWithBindingList("data")
+    }
+});
 defineControl("Tooltip", {
     propHandlers: {
         children: PropHandlers.mountTo(function (winjsComponent) {
