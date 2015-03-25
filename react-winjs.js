@@ -115,6 +115,23 @@ var RawControlApis = {
         "numberOfItemsPerItemsBlock",
         "orientation"
     ],
+    Command: [
+        "disabled",
+        "element",
+        "extraClass",
+        "firstElementFocus",
+        "flyout",
+        "hidden",
+        "icon",
+        "id",
+        "label",
+        "lastElementFocus",
+        "onClick",
+        "section",
+        "selected",
+        "tooltip",
+        "type"
+    ],
     ContentDialog: [
         "element",
         "hidden",
@@ -788,7 +805,7 @@ defineControl("AppBar", {
 });
 // TODO: Can't change AppBarCommand.type on the fly (initialize only)
 // TODO: AppBarCommand.flyout doesn't work
-defineControl("AppBarCommand", {
+var appBarCommandSpec = {
     render: function (component) {
         var tagName =
             component.props.type === "content" ?
@@ -798,7 +815,8 @@ defineControl("AppBarCommand", {
             "button";
         return React.createElement(tagName);
     }
-});
+};
+defineControl("AppBarCommand", appBarCommandSpec);
 defineControl("AutoSuggestBox");
 defineControl("BackButton", {
     render: function (component) {
@@ -806,6 +824,9 @@ defineControl("BackButton", {
     }
 });
 // CellSpanningLayout: Not a component so just use off of WinJS.UI?
+// TODO: Can't change Command.type on the fly (initialize only)
+// TODO: Command.flyout doesn't work
+defineControl("Command", appBarCommandSpec);
 defineControl("ContentDialog", {
     propHandlers: {
         children: PropHandlers.mountTo(function (winjsComponent) {
