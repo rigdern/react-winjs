@@ -4,6 +4,8 @@ A React wrapper around WinJS's controls. Implemented using the technique describ
 
 A work in progress.
 
+[Documentation and examples](https://github.com/rigdern/react-winjs/wiki/Documentation).
+
 ## Installation
 
 ```
