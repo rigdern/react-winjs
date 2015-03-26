@@ -27,11 +27,11 @@ var ReactWinJS = require('react-winjs');
 
 var App = React.createClass({
   render: function () {
-    return <ReactWinJS.Rating maxRating={5} />;
+    return <ReactWinJS.Rating maxRating={3} />;
   }
 });
 
-React.render(<App /> document.getElementById("app"));
+React.render(<App />, document.getElementById("app"));
 ```
 
 See the [documentation](https://github.com/rigdern/react-winjs/wiki/Documentation) for more details and examples.
