@@ -11,8 +11,12 @@
     "react"
   ],
   "author": "Adam Comella",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rigdern/react-winjs"
+  },
   "license": "MIT",
-  "dependencies": {
+  "peerDependencies": {
     "react": "^0.12.2"
   }
 }
