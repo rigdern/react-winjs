@@ -810,40 +810,6 @@ WinJSChildComponent.prototype.update = function (component) {
     component.type.updateWinJSComponent(this, component.props);
 };
 
-defineControl("AppBar", {
-    propHandlers: {
-        children: function (winjsComponent, propValue) {
-            var oldChildComponents = winjsComponent.data.winjsChildComponents || [];
-            var oldChildComponentsMap = winjsComponent.data.winjsChildComponentsMap || {};
-            var newChildComponents = [];
-            var newChildComponentsMap = {};
-
-            React.Children.forEach(propValue, function (component) {
-                if (component) {
-                    var winjsChildComponent = oldChildComponentsMap[component.key];
-                    if (winjsChildComponent) {
-                        winjsChildComponent.update(component);
-                    } else {
-                        winjsChildComponent = new WinJSChildComponent(component);
-                    }
-                    newChildComponents.push(winjsChildComponent);
-                    newChildComponentsMap[component.key] = winjsChildComponent;
-                }
-            });
-
-            if (!arraysShallowEqual(oldChildComponents, newChildComponents)) {
-                winjsComponent.winControl.commands = newChildComponents.map(function (winjsChildComponent) {
-                    return winjsChildComponent.winControl;
-                });
-            
-                winjsComponent.data.winjsChildComponents = newChildComponents;
-                winjsComponent.data.winjsChildComponentsMap = newChildComponentsMap;
-            }
-        }
-    }
-});
-// TODO: Can't change AppBarCommand.type on the fly (initialize only)
-// TODO: AppBarCommand.flyout doesn't work
 var appBarCommandSpec = {
     render: function (component) {
         var tagName =
@@ -855,149 +821,190 @@ var appBarCommandSpec = {
         return React.createElement(tagName);
     }
 };
-defineControl("AppBarCommand", appBarCommandSpec);
-defineControl("AutoSuggestBox");
-defineControl("BackButton", {
-    render: function (component) {
-        return React.DOM.button();
-    }
-});
-// CellSpanningLayout: Not a component so just use off of WinJS.UI?
-// TODO: Can't change Command.type on the fly (initialize only)
-// TODO: Command.flyout doesn't work
-defineControl("Command", appBarCommandSpec);
-defineControl("ContentDialog", {
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.element.querySelector(".win-contentdialog-content");
-        })
-    }
-});
-defineControl("DatePicker");
-defineControl("FlipView");
-defineControl("Flyout", {
-    // The WinJS Flyout control doesn't come with a good mount point.
-    // App content and control content are siblings in Flyout.element.
-    // Consequently, if React rendered to Flyout.element, it would destroy
-    // some of Flyout's elements. To fix this, we give Flyout a div
-    // (className="win-react-flyout-mount-point") which will contain only
-    // app content. The React component renders into this div so it doesn't
-    // destroy any control content.
-    render: function (component) {
-        return React.DOM.div(null, React.DOM.div({ className: "win-react-flyout-mount-point" }));
-    },
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.element.querySelector(".win-react-flyout-mount-point");
-        })
-    }
-});
-// GridLayout: Not a component so just use off of WinJS.UI?
-defineControl("Hub", {
-    propHandlers: {
-        children: PropHandlers.syncChildrenWithBindingList("sections")
-    }
-});
-defineControl("HubSection", {
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.contentElement;
-        })
-    }
-});
-defineControl("ItemContainer", {
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.element.querySelector(".win-item");
-        })
-    }
-});
-// ListLayout: Not a component so just use off of WinJS.UI?
-defineControl("ListView");
-defineControl("Menu", {
-    propHandlers: {
-        children: function (winjsComponent, propValue) {
-            React.render(React.DOM.div(null, propValue), winjsComponent.winControl.element);
-        }
-    }
-});
-// TODO: Can't change MenuCommand.type on the fly (initialize only)
-// TODO: MenuCommand.flyout doesn't work
-defineControl("MenuCommand", {
-    render: function (component) {
-        var tagName = component.props.type === "separator" ?
-            "hr" :
-            "button";
-        return React.createElement(tagName);
-    }
-});
-defineControl("NavBar", {
-    // The WinJS NavBar control doesn't come with a good mount point.
-    // App content and control content are siblings in NavBar.element.
-    // Consequently, if React rendered to NavBar.element, it would destroy
-    // some of NavBar's elements. To fix this, we give NavBar a div
-    // (className="win-react-navbar-mount-point") which will contain only
-    // app content. The React component renders into this div so it doesn't
-    // destroy any control content.
-    render: function (component) {
-        return React.DOM.div(null, React.DOM.div({ className: "win-react-navbar-mount-point" }));
-    },
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.element.querySelector(".win-react-navbar-mount-point");
-        })
-    }
-});
-defineControl("NavBarCommand");
-defineControl("NavBarContainer", {
-    propHandlers: {
-        children: PropHandlers.syncChildrenWithBindingList("data")
-    }
-});
-defineControl("Pivot", {
-    propHandlers: {
-        children: PropHandlers.syncChildrenWithBindingList("items")
-    }
-});
-defineControl("PivotItem", {
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.contentElement;
-        })
-    }
-});
-defineControl("Rating");
-defineControl("SearchBox");
-// TODO: SemanticZoom
-defineControl("SplitView", {
-    propHandlers: {
-        paneComponent: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.paneElement;
-        }),
-        contentComponent: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.contentElement;
-        })
-    }
-});
-defineControl("TimePicker");
-defineControl("ToggleSwitch");
-defineControl("ToolBar", {
-    propHandlers: {
-        children: PropHandlers.syncChildrenWithBindingList("data")
-    }
-});
-defineControl("Tooltip", {
-    propHandlers: {
-        children: PropHandlers.mountTo(function (winjsComponent) {
-            return winjsComponent.winControl.element;
-        }),
-        contentComponent: function (winjsComponent, propValue) {
-            if (!winjsComponent.winControl.contentElement) {
-                winjsComponent.winControl.contentElement = document.createElement("div");
+
+var ControlSpecs = {
+    AppBar: {
+        propHandlers: {
+            children: function (winjsComponent, propValue) {
+                var oldChildComponents = winjsComponent.data.winjsChildComponents || [];
+                var oldChildComponentsMap = winjsComponent.data.winjsChildComponentsMap || {};
+                var newChildComponents = [];
+                var newChildComponentsMap = {};
+
+                React.Children.forEach(propValue, function (component) {
+                    if (component) {
+                        var winjsChildComponent = oldChildComponentsMap[component.key];
+                        if (winjsChildComponent) {
+                            winjsChildComponent.update(component);
+                        } else {
+                            winjsChildComponent = new WinJSChildComponent(component);
+                        }
+                        newChildComponents.push(winjsChildComponent);
+                        newChildComponentsMap[component.key] = winjsChildComponent;
+                    }
+                });
+
+                if (!arraysShallowEqual(oldChildComponents, newChildComponents)) {
+                    winjsComponent.winControl.commands = newChildComponents.map(function (winjsChildComponent) {
+                        return winjsChildComponent.winControl;
+                    });
+                
+                    winjsComponent.data.winjsChildComponents = newChildComponents;
+                    winjsComponent.data.winjsChildComponentsMap = newChildComponentsMap;
+                }
             }
-            React.render(propValue, winjsComponent.winControl.contentElement);
+        }
+    },
+    // TODO: Can't change AppBarCommand.type on the fly (initialize only)
+    // TODO: AppBarCommand.flyout doesn't work
+    AppBarCommand: appBarCommandSpec,
+    AutoSuggestBox: {},
+    BackButton: {
+        render: function (component) {
+            return React.DOM.button();
+        }
+    },
+    // CellSpanningLayout: Not a component so just use off of WinJS.UI?
+    // TODO: Can't change Command.type on the fly (initialize only)
+    // TODO: Command.flyout doesn't work
+    Command: appBarCommandSpec,
+    ContentDialog: {
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element.querySelector(".win-contentdialog-content");
+            })
+        }
+    },
+    DatePicker: {},
+    FlipView: {},
+    Flyout: {
+        // The WinJS Flyout control doesn't come with a good mount point.
+        // App content and control content are siblings in Flyout.element.
+        // Consequently, if React rendered to Flyout.element, it would destroy
+        // some of Flyout's elements. To fix this, we give Flyout a div
+        // (className="win-react-flyout-mount-point") which will contain only
+        // app content. The React component renders into this div so it doesn't
+        // destroy any control content.
+        render: function (component) {
+            return React.DOM.div(null, React.DOM.div({ className: "win-react-flyout-mount-point" }));
+        },
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element.querySelector(".win-react-flyout-mount-point");
+            })
+        }
+    },
+    // GridLayout: Not a component so just use off of WinJS.UI?
+    Hub: {
+        propHandlers: {
+            children: PropHandlers.syncChildrenWithBindingList("sections")
+        }
+    },
+    HubSection: {
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.contentElement;
+            })
+        }
+    },
+    ItemContainer: {
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element.querySelector(".win-item");
+            })
+        }
+    },
+    // ListLayout: Not a component so just use off of WinJS.UI?
+    ListView: {},
+    Menu: {
+        propHandlers: {
+            children: function (winjsComponent, propValue) {
+                React.render(React.DOM.div(null, propValue), winjsComponent.winControl.element);
+            }
+        }
+    },
+    // TODO: Can't change MenuCommand.type on the fly (initialize only)
+    // TODO: MenuCommand.flyout doesn't work
+    MenuCommand: {
+        render: function (component) {
+            var tagName = component.props.type === "separator" ?
+                "hr" :
+                "button";
+            return React.createElement(tagName);
+        }
+    },
+    NavBar: {
+        // The WinJS NavBar control doesn't come with a good mount point.
+        // App content and control content are siblings in NavBar.element.
+        // Consequently, if React rendered to NavBar.element, it would destroy
+        // some of NavBar's elements. To fix this, we give NavBar a div
+        // (className="win-react-navbar-mount-point") which will contain only
+        // app content. The React component renders into this div so it doesn't
+        // destroy any control content.
+        render: function (component) {
+            return React.DOM.div(null, React.DOM.div({ className: "win-react-navbar-mount-point" }));
+        },
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element.querySelector(".win-react-navbar-mount-point");
+            })
+        }
+    },
+    NavBarCommand: {},
+    NavBarContainer: {
+        propHandlers: {
+            children: PropHandlers.syncChildrenWithBindingList("data")
+        }
+    },
+    Pivot: {
+        propHandlers: {
+            children: PropHandlers.syncChildrenWithBindingList("items")
+        }
+    },
+    PivotItem: {
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.contentElement;
+            })
+        }
+    },
+    Rating: {},
+    SearchBox: {},
+    // TODO: SemanticZoom
+    SplitView: {
+        propHandlers: {
+            paneComponent: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.paneElement;
+            }),
+            contentComponent: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.contentElement;
+            })
+        }
+    },
+    TimePicker: {},
+    ToggleSwitch: {},
+    ToolBar: {
+        propHandlers: {
+            children: PropHandlers.syncChildrenWithBindingList("data")
+        }
+    },
+    Tooltip: {
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element;
+            }),
+            contentComponent: function (winjsComponent, propValue) {
+                if (!winjsComponent.winControl.contentElement) {
+                    winjsComponent.winControl.contentElement = document.createElement("div");
+                }
+                React.render(propValue, winjsComponent.winControl.contentElement);
+            }
         }
     }
+};
+
+Object.keys(ControlSpecs).forEach(function (controlName) {
+    defineControl(controlName, ControlSpecs[controlName]);
 });
 
 // Given a function that returns a React component,
