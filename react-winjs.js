@@ -54,7 +54,7 @@
 //     rerender/reinstantiate itself as needed but I'm not sure how to do that in the
 //     ICommand.type case.
 
-var React = require('react');
+var React = require('react/addons');
 
 var ReactWinJS = {};
 
@@ -592,6 +592,7 @@ function applyEditsToBindingList(list, edits) {
 // interface IWinJSComponent {
 //     winControl
 //     data
+//     displayName
 // }
 
 // interface IWinJSChildComponent extends IWinJSComponent {
@@ -613,14 +614,29 @@ var PropHandlers = {
 
             React.Children.forEach(propValue, function (component) {
                 if (component) {
-                    var winjsChildComponent = oldChildComponentsMap[component.key];
-                    if (winjsChildComponent) {
-                        winjsChildComponent.update(component);
-                    } else {
-                        winjsChildComponent = new WinJSChildComponent(component);
+                    if (component.ref) {
+                        console.warn(
+                            "ref prop (" + component.ref + ") will not work on " +
+                            component.type.displayName + " component because it is inside " +
+                            "of a " + winjsComponent.displayName + " component"
+                        );
                     }
-                    newChildComponents.push(winjsChildComponent);
-                    newChildComponentsMap[component.key] = winjsChildComponent;
+
+                    if (component.key === null) {
+                        console.error(
+                            component.type.displayName + " component requires a key " +
+                            "when inside of a " + winjsComponent.displayName + " component"
+                        );
+                    } else {
+                        var winjsChildComponent = oldChildComponentsMap[component.key];
+                        if (winjsChildComponent) {
+                            winjsChildComponent.update(component);
+                        } else {
+                            winjsChildComponent = new WinJSChildComponent(component);
+                        }
+                        newChildComponents.push(winjsChildComponent);
+                        newChildComponentsMap[component.key] = winjsChildComponent;
+                    }
                 }
             });
 
@@ -648,8 +664,48 @@ function defineControl(controlName, options) {
     var render = options.render || function (component) {
         return React.DOM.div();
     };
+    var displayName = controlName;
 
-    function update(winjsComponent, nextProps) {
+    function initWinJSComponent(winjsComponent, element, props) {
+        var data = {};
+
+        // Properties
+        //
+        var winControl = new WinJS.UI[controlName](
+            element,
+            selectKeys(ControlApis[controlName].properties, props)
+        );
+
+        winjsComponent.data = data;
+        winjsComponent.winControl = winControl;
+        winjsComponent.displayName = displayName;
+
+        // Events
+        //
+        ControlApis[controlName].events.forEach(function (eventName) {
+            if (props.hasOwnProperty(eventName)) {
+                winControl[eventName.toLowerCase()] = props[eventName];
+            }
+        });
+
+        // propHandlers
+        //
+        Object.keys(propHandlers).forEach(function (propName) {
+            if (props.hasOwnProperty(propName)) {
+                var handleProp = propHandlers[propName];
+                handleProp(winjsComponent, props[propName]);
+            }
+        });
+
+        // className
+        //
+        data.classSet = makeClassSet(props.className);
+        if (props.className) {
+            element.className += " " + props.className;
+        }
+    }
+
+    function updateWinJSComponent(winjsComponent, nextProps) {
         var winControl = winjsComponent.winControl;
 
         // Properties
@@ -700,52 +756,25 @@ function defineControl(controlName, options) {
     }
 
     ReactWinJS[controlName] = React.createClass({
-        displayName: controlName,
+        displayName: displayName,
         statics: {
-            update: update
+            initWinJSComponent: initWinJSComponent,
+            updateWinJSComponent: updateWinJSComponent
         },
         shouldComponentUpdate: function () {
             return false;
         },
+        // If choosing to implement componentWillMount, be aware that componentWillMount
+        // will run when WinJSChildComponent renders the component to a string via
+        // renderRootlessComponent.
         componentDidMount: function () {
-            this.data = {};
-
-            // Properties
-            //
-            this.winControl = new WinJS.UI[controlName](
-                this.getDOMNode(),
-                selectKeys(ControlApis[controlName].properties, this.props)
-            );
-
-            // Events
-            //
-            ControlApis[controlName].events.forEach(function (eventName) {
-                if (this.props.hasOwnProperty(eventName)) {
-                    this.winControl[eventName.toLowerCase()] = this.props[eventName];
-                }
-            }, this);
-
-            // propHandlers
-            //
-            Object.keys(propHandlers).forEach(function (propName) {
-                if (this.props.hasOwnProperty(propName)) {
-                    var handleProp = propHandlers[propName];
-                    handleProp(this, this.props[propName]);
-                }
-            }, this);
-
-            // className
-            //
-            this.data.classSet = makeClassSet(this.props.className);
-            if (this.props.className) {
-                this.getDOMNode().className += " " + this.props.className;
-            }
+            initWinJSComponent(this, this.getDOMNode(), this.props);
         },
         componentWillUnmount: function () {
             this.winControl.dispose && this.winControl.dispose();
         },
         componentWillReceiveProps: function (nextProps) {
-            update(this, nextProps);
+            updateWinJSComponent(this, nextProps);
         },
         render: function() {
             return render(this);
@@ -753,22 +782,32 @@ function defineControl(controlName, options) {
     });
 }
 
+var hostEl = document.createElement("div");
+function renderRootlessComponent(component) {
+    var html = React.renderToStaticMarkup(component);
+    hostEl.innerHTML = html;
+    var element = hostEl.firstElementChild;
+    hostEl.removeChild(element);
+    return element;
+}
+
 // TODO: Is there a better way to solve this problem that WinJSChildComponent solves?
+// TODO: Because we're not going thru React's lifecycle, we're missing out on
+// validation of propTypes.
+// TODO: ref doesn't work on WinJSChildComponents. The reason is that during updates, we
+// don't call React.render. Because of this, refs would go stale and only reflect the
+// state of the component after its first render. Consequently, we clone the component
+// during its first render so it never shows up in refs. This should make it clearer
+// that refs don't work than generating stale refs.
 function WinJSChildComponent(component) { // implements IWinJSChildComponent
-    var instance = React.render(component, document.createElement("div"));
-    // TODO: The technique of the above line causes React to generate warnings that look
-    // like this:
-    //   ReactMount: Root element has been removed from its original container. New container: 
-    this.winControl = instance.winControl;
-    this.data = instance.data;
+    // Clone the component so a ref isn't generated.
+    var clonedComponent = React.addons.cloneWithProps(component);
+    var element = renderRootlessComponent(clonedComponent);
+    component.type.initWinJSComponent(this, element, component.props);
     this.key = component.key;
 };
 WinJSChildComponent.prototype.update = function (component) {
-    // TODO: Because we're not going thru React's lifecycle, we're missing out on
-    // validation of propTypes.
-    // TODO: I don't think winControl will be available on component
-    // if an app decides to use component as a ref...
-    component.type.update(this, component.props);
+    component.type.updateWinJSComponent(this, component.props);
 };
 
 defineControl("AppBar", {
