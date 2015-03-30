@@ -1,20 +1,12 @@
 // Notes
 // - What's the most common way to distribute React components? webpack? requirejs?
-// - Control options use DOM level 0 events while its property setters use DOM level 2 events.
-//   This is problematic if React is using a different mechanism to initialize events than to
-//   change them.
 // - React appears to restore focus after componentWillReceiveProps. This is problematic for
 //   overlays like Flyout that are synchronously shown and take focus in componentWillReceiveProps.
-// - Rename to react-winjs to be consistent with angular-winjs
-// - Event handler names are completely lowercase
 // - propTypes
 // - Should React be listed as a peerDependency instead of as a dependency?
 // - Does this project need a webpack config file?
 // - Enable setting of classNames and inline styles on control roots?
-// - Instead of diffing nextProps and current winControl value, should
-//   we diff nextProps and this.props when deciding whether or not to
-//   set the value on winControl? This would benefit FlipView.itemTemplate because currently
-//   getting FlipView.itemTemplate does not necessarily give you the value you wrote to it.
+// - Which props need to work like controlled components?
 // - What if we modeled dismissables like this? Instead of the app having to call hide/show,
 //   the app could render a special element for all dismissables (e.g. Dismissables) and when
 //   a dismissable is rendered into there, it will be shown. When it is no longer rendered
@@ -43,10 +35,6 @@
 //       displayNone={this.state.shouldHideListViewAtThisScreenSize}
 //       itemDataSource={this.state.itemDataSource}
 //       itemTemplate={this.itemTemplate} />
-// - What do we do when a prop is removed from one render to the next? Do we need to pass
-//   undefined to the underlying control for that one render? (if the prop is omitted from
-//   the next render as well, we shouldn't have to pass it along because we already "cleared"
-//   it)
 // - Should have special initialization propHandlers that would get to influence what gets
 //   passed in the options parameter to the control's constructer? Use cases:
 //   - Initialize Hub's BindingList (rather than editing it immediately after construction)
@@ -445,20 +433,14 @@ function isEvent(propName) {
     return propName[0] === "o" && propName[1] === "n";
 }
 
-function selectKeys(keys, obj) {
-    var result = {};
-    keys.forEach(function (k) {
-        if (obj.hasOwnProperty(k)) {
-            result[k] = obj[k];
-        }
-    });
-    return result;
-}
-
 function merge(a, b) {
     var result = {};
-    for (k in a) { result[k] = a[k]; }
-    for (k in b) { result[k] = b[k]; }
+    if (a) {
+        for (k in a) { result[k] = a[k]; }
+    }
+    if (b) {
+        for (k in b) { result[k] = b[k]; }
+    }
     return result;
 }
 
@@ -490,29 +472,6 @@ function makeClassSet(className) {
     });
     return classSet;
 }
-
-function keepProperty(propertyName) {
-    return !endsWith(propertyName.toLowerCase(), "element");
-}
-
-var ControlApis = (function processRawApis() {
-    var result = {};
-    Object.keys(RawControlApis).forEach(function (controlName) {
-        var entry = {
-            properties: [],
-            events: []
-        };
-        RawControlApis[controlName].forEach(function (propName) {
-            if (isEvent(propName)) {
-                entry.events.push(propName);
-            } else if (keepProperty(propName)) {
-                entry.properties.push(propName);
-            }
-        });
-        result[controlName] = entry;
-    });
-    return result;
-})();
 
 // TODO: Revisit all of this diffing stuff:
 //   - Make it more efficient
@@ -599,62 +558,139 @@ function applyEditsToBindingList(list, edits) {
 //     key
 // }
 
+function processChildren(componentDisplayName, children, childComponentsMap) {
+    var newChildComponents = [];
+    var newChildComponentsMap = {};
+
+    React.Children.forEach(children, function (component) {
+        if (component) {
+            if (component.ref) {
+                console.warn(
+                    "ref prop (" + component.ref + ") will not work on " +
+                    component.type.displayName + " component because it is inside " +
+                    "of a " + componentDisplayName + " component"
+                );
+            }
+
+            if (component.key === null) {
+                console.error(
+                    component.type.displayName + " component requires a key " +
+                    "when inside of a " + componentDisplayName + " component"
+                );
+            } else {
+                // TODO: Handle deletion/dispose and changing of component type
+                var winjsChildComponent = childComponentsMap[component.key];
+                if (winjsChildComponent) {
+                    winjsChildComponent.update(component);
+                } else {
+                    winjsChildComponent = new WinJSChildComponent(component);
+                }
+                newChildComponents.push(winjsChildComponent);
+                newChildComponentsMap[component.key] = winjsChildComponent;
+            }
+        }
+    });
+    return {
+        childComponents: newChildComponents,
+        childComponentsMap: newChildComponentsMap
+    };
+}
+
 var PropHandlers = {
+    property: {
+        getValueForOptions: function property_getValueForOptions(winjsComponent, propName, value) {
+            return { key: propName, value: value };
+        },
+        update: function property_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                winjsComponent.winControl[propName] = newValue;
+            }
+        }
+    },
+    event: {
+        // Can't use getValueForOptions for events. The problem is WinJS control options
+        // use a different code path to hook up events than the event property setters.
+        // Consequently, setting an event property will not automatically unhook the event
+        // listener that was specified in the options during initialization. To avoid this
+        // problem, always go thru the event property setters.
+        update: function event_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                winjsComponent.winControl[propName.toLowerCase()] = newValue;
+            }
+        }
+    },
+    //  Enable the addition and removal of CSS classes on the root of the winControl
+    //  but don't clobber whatever CSS classes the underlying control may have added
+    //  (e.g. don't clobber win-listview).
+    winControlClassName: {
+        update: function winControlClassName_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                var oldClassSet = winjsComponent.data[propName] || {};
+                var newClassSet = makeClassSet(newValue);
+                var elementClassList = winjsComponent.winControl.element.classList;
+                for (var className in oldClassSet) {
+                    if (!newClassSet[className]) {
+                        elementClassList.remove(className);
+                    }
+                }
+                for (var className in newClassSet) {
+                    if (!oldClassSet[className]) {
+                        elementClassList.add(className);
+                    }
+                }
+                winjsComponent.data[propName] = newClassSet;
+            }
+        }
+    },
     mountTo: function PropHandlers_mountTo(getMountPoint) {
-        return function mountTo(winjsComponent, propValue) {
-            React.render(propValue, getMountPoint(winjsComponent));
+        return {
+            update: function mountTo_update(winjsComponent, propName, oldValue, newValue) {
+                React.render(newValue, getMountPoint(winjsComponent));
+            }
         };
     },
     syncChildrenWithBindingList: function PropHandlers_syncChildrenWithBindingList(bindingListName) {
-        return function syncChildrenWithBindingList(winjsComponent, propValue) {
-            var oldChildComponents = winjsComponent.data.winjsChildComponents || [];
-            var oldChildComponentsMap = winjsComponent.data.winjsChildComponentsMap || {};
-            var newChildComponents = [];
-            var newChildComponentsMap = {};
+        return {
+            getValueForOptions: function syncChildrenWithBindingList_getValueForOptions(winjsComponent, propName, value) {
+                var latest = processChildren(winjsComponent.displayName, value, {});
+                winjsComponent.data[propName] = {
+                    winjsChildComponents: latest.childComponents,
+                    winjsChildComponentsMap: latest.childComponentsMap
+                };
 
-            React.Children.forEach(propValue, function (component) {
-                if (component) {
-                    if (component.ref) {
-                        console.warn(
-                            "ref prop (" + component.ref + ") will not work on " +
-                            component.type.displayName + " component because it is inside " +
-                            "of a " + winjsComponent.displayName + " component"
-                        );
-                    }
+                return {
+                    key: bindingListName,
+                    value: new WinJS.Binding.List(
+                        latest.childComponents.map(function (winjsChildComponent) {
+                            return winjsChildComponent.winControl;
+                        })
+                    )
+                };
+            },
+            update: function syncChildrenWithBindingList_update(winjsComponent, propName, oldValue, newValue) {
+                var data = winjsComponent.data[propName] || {};
+                var oldChildComponents = data.winjsChildComponents || [];
+                var oldChildComponentsMap = data.winjsChildComponentsMap || {};
+                var latest = processChildren(winjsComponent.displayName, newValue, oldChildComponentsMap);
 
-                    if (component.key === null) {
-                        console.error(
-                            component.type.displayName + " component requires a key " +
-                            "when inside of a " + winjsComponent.displayName + " component"
-                        );
-                    } else {
-                        var winjsChildComponent = oldChildComponentsMap[component.key];
-                        if (winjsChildComponent) {
-                            winjsChildComponent.update(component);
-                        } else {
-                            winjsChildComponent = new WinJSChildComponent(component);
-                        }
-                        newChildComponents.push(winjsChildComponent);
-                        newChildComponentsMap[component.key] = winjsChildComponent;
-                    }
+                var bindingList = winjsComponent.winControl[bindingListName];
+                if (bindingList) {
+                    applyEditsToBindingList(
+                        bindingList,
+                        diffArraysByKey(oldChildComponents, latest.childComponents)
+                    );
+                } else {
+                    winjsComponent.winControl[bindingListName] = new WinJS.Binding.List(latest.childComponents.map(function (winjsChildComponent) {
+                        return winjsChildComponent.winControl;
+                    }));
                 }
-            });
-
-            var bindingList = winjsComponent.winControl[bindingListName];
-            if (bindingList) {
-                applyEditsToBindingList(
-                    bindingList,
-                    diffArraysByKey(oldChildComponents, newChildComponents)
-                );
-            } else {
-                winjsComponent.winControl[bindingListName] = new WinJS.Binding.List(newChildComponents.map(function (winjsChildComponent) {
-                    return winjsChildComponent.winControl;
-                }));
+                
+                winjsComponent.data[propName] = {
+                    winjsChildComponents: latest.childComponents,
+                    winjsChildComponentsMap: latest.childComponentsMap
+                };
             }
-            
-            winjsComponent.data.winjsChildComponents = newChildComponents;
-            winjsComponent.data.winjsChildComponentsMap = newChildComponentsMap;
-        };
+        }
     }
 };
 
@@ -667,95 +703,50 @@ function defineControl(controlName, options) {
     var displayName = controlName;
 
     function initWinJSComponent(winjsComponent, element, props) {
-        var data = {};
-
-        // Properties
-        //
-        var winControl = new WinJS.UI[controlName](
-            element,
-            selectKeys(ControlApis[controlName].properties, props)
-        );
-
-        winjsComponent.data = data;
-        winjsComponent.winControl = winControl;
+        winjsComponent.data = {};
         winjsComponent.displayName = displayName;
 
-        // Events
-        //
-        ControlApis[controlName].events.forEach(function (eventName) {
-            if (props.hasOwnProperty(eventName)) {
-                winControl[eventName.toLowerCase()] = props[eventName];
+        // Use propHandlers that implement getValueForOptions to generate control options.
+        var options = {};
+        Object.keys(props).forEach(function (propName) {
+            var getValueForOptions = propHandlers[propName] && propHandlers[propName].getValueForOptions;
+            if (getValueForOptions) {
+                var kvPair = getValueForOptions(winjsComponent, propName, props[propName]);
+                options[kvPair.key] = kvPair.value;
             }
         });
+        winjsComponent.winControl = new WinJS.UI[controlName](element, options);        
 
-        // propHandlers
-        //
-        Object.keys(propHandlers).forEach(function (propName) {
-            if (props.hasOwnProperty(propName)) {
-                var handleProp = propHandlers[propName];
-                handleProp(winjsComponent, props[propName]);
+        // Process propHandlers that don't implement getValueForOptions.
+        Object.keys(props).forEach(function (propName) {
+            var handler = propHandlers[propName];
+            if (handler && !handler.getValueForOptions) {
+                handler.update(winjsComponent, propName, undefined, props[propName]);
             }
         });
-
-        // className
-        //
-        data.classSet = makeClassSet(props.className);
-        if (props.className) {
-            element.className += " " + props.className;
-        }
     }
 
-    function updateWinJSComponent(winjsComponent, nextProps) {
-        var winControl = winjsComponent.winControl;
-
-        // Properties
-        //
-        ControlApis[controlName].properties.forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName) && winControl[propName] !== nextProps[propName]) {
-                winControl[propName] = nextProps[propName];
+    function updateWinJSComponent(winjsComponent, prevProps, nextProps) {
+        // Handle props that were added or changed
+        Object.keys(nextProps).forEach(function (propName) {
+            var handler = propHandlers[propName];
+            if (handler) {
+                handler.update(winjsComponent, propName, prevProps[propName], nextProps[propName]);
             }
         });
 
-        // Events
-        //
-        ControlApis[controlName].events.forEach(function (eventName) {
-            var lowerEventName = eventName.toLowerCase();
-            if (nextProps.hasOwnProperty(eventName) && winControl[lowerEventName] !== nextProps[eventName]) {
-                winControl[lowerEventName] = nextProps[eventName];
+        // Handle props that were removed
+        Object.keys(prevProps).forEach(function (propName) {
+            if (!nextProps.hasOwnProperty(propName)) {
+                var handler = propHandlers[propName];
+                if (handler) {
+                    handler.update(winjsComponent, propName, prevProps[propName], undefined);
+                }
             }
         });
-
-        // propHandlers
-        //
-        Object.keys(propHandlers).forEach(function (propName) {
-            if (nextProps.hasOwnProperty(propName)) {
-                var handleProp = propHandlers[propName];
-                handleProp(winjsComponent, nextProps[propName]);
-            }
-        });
-
-        // className
-        //  Enable the addition and removal of CSS classes on the root of the winControl
-        //  but don't clobber whatever CSS classes the underlying control may have added
-        //  (e.g. don't clobber win-listview).
-        //
-        var elementClassList = winjsComponent.winControl.element.classList;
-        var oldClassSet = winjsComponent.data.classSet;
-        var newClassSet = makeClassSet(nextProps.className);
-        for (var className in oldClassSet) {
-            if (!newClassSet[className]) {
-                elementClassList.remove(className);
-            }
-        }
-        for (var className in newClassSet) {
-            if (!oldClassSet[className]) {
-                elementClassList.add(className);
-            }
-        }
-        winjsComponent.data.classSet = newClassSet;
     }
 
-    ReactWinJS[controlName] = React.createClass({
+    return React.createClass({
         displayName: displayName,
         statics: {
             initWinJSComponent: initWinJSComponent,
@@ -774,7 +765,7 @@ function defineControl(controlName, options) {
             this.winControl.dispose && this.winControl.dispose();
         },
         componentWillReceiveProps: function (nextProps) {
-            updateWinJSComponent(this, nextProps);
+            updateWinJSComponent(this, this.props, nextProps);
         },
         render: function() {
             return render(this);
@@ -805,10 +796,47 @@ function WinJSChildComponent(component) { // implements IWinJSChildComponent
     var element = renderRootlessComponent(clonedComponent);
     component.type.initWinJSComponent(this, element, component.props);
     this.key = component.key;
+    this._props = component.props;
 };
 WinJSChildComponent.prototype.update = function (component) {
-    component.type.updateWinJSComponent(this, component.props);
+    component.type.updateWinJSComponent(this, this._props, component.props);
+    this._props = component.props;
 };
+
+var DefaultControlApis = (function processRawApis() {
+    var keepProperty = function keepProperty(propertyName) {
+        return !endsWith(propertyName.toLowerCase(), "element");
+    };
+
+    var result = {};
+    Object.keys(RawControlApis).forEach(function (controlName) {
+        var propHandlers = {
+            className: PropHandlers.winControlClassName
+        };
+        RawControlApis[controlName].forEach(function (propName) {
+            if (isEvent(propName)) {
+                propHandlers[propName] = PropHandlers.event;
+            } else if (keepProperty(propName)) {
+                propHandlers[propName] = PropHandlers.property;
+            }
+        });
+        result[controlName] = {
+            propHandlers: propHandlers
+        };
+    });
+    return result;
+})();
+
+function updateWithDefaults(controlApis) {
+    Object.keys(controlApis).forEach(function (controlName) {
+        var spec = controlApis[controlName];
+        spec.propHandlers = merge(
+            DefaultControlApis[controlName].propHandlers,
+            spec.propHandlers
+        );
+    });
+    return controlApis;
+}
 
 var appBarCommandSpec = {
     render: function (component) {
@@ -822,35 +850,26 @@ var appBarCommandSpec = {
     }
 };
 
-var ControlSpecs = {
+var ControlApis = updateWithDefaults({
     AppBar: {
         propHandlers: {
-            children: function (winjsComponent, propValue) {
-                var oldChildComponents = winjsComponent.data.winjsChildComponents || [];
-                var oldChildComponentsMap = winjsComponent.data.winjsChildComponentsMap || {};
-                var newChildComponents = [];
-                var newChildComponentsMap = {};
+            children: {
+                update: function AppBar_children_update(winjsComponent, propName, oldValue, newValue) {
+                    var data = winjsComponent.data[propName] || {};
+                    var oldChildComponents = data.winjsChildComponents || [];
+                    var oldChildComponentsMap = data.winjsChildComponentsMap || {};
+                    var latest = processChildren(winjsComponent.displayName, newValue, oldChildComponentsMap);
 
-                React.Children.forEach(propValue, function (component) {
-                    if (component) {
-                        var winjsChildComponent = oldChildComponentsMap[component.key];
-                        if (winjsChildComponent) {
-                            winjsChildComponent.update(component);
-                        } else {
-                            winjsChildComponent = new WinJSChildComponent(component);
-                        }
-                        newChildComponents.push(winjsChildComponent);
-                        newChildComponentsMap[component.key] = winjsChildComponent;
+                    if (!arraysShallowEqual(oldChildComponents, latest.childComponents)) {
+                        winjsComponent.winControl.commands = latest.childComponents.map(function (winjsChildComponent) {
+                            return winjsChildComponent.winControl;
+                        });
+                    
+                        winjsComponent.data[propName] = {
+                            winjsChildComponents: latest.childComponents,
+                            winjsChildComponentsMap: latest.childComponentsMap
+                        };
                     }
-                });
-
-                if (!arraysShallowEqual(oldChildComponents, newChildComponents)) {
-                    winjsComponent.winControl.commands = newChildComponents.map(function (winjsChildComponent) {
-                        return winjsChildComponent.winControl;
-                    });
-                
-                    winjsComponent.data.winjsChildComponents = newChildComponents;
-                    winjsComponent.data.winjsChildComponentsMap = newChildComponentsMap;
                 }
             }
         }
@@ -918,8 +937,10 @@ var ControlSpecs = {
     ListView: {},
     Menu: {
         propHandlers: {
-            children: function (winjsComponent, propValue) {
-                React.render(React.DOM.div(null, propValue), winjsComponent.winControl.element);
+            children: {
+                update: function (winjsComponent, propName, oldValue, newValue) {
+                    React.render(React.DOM.div(null, newValue), winjsComponent.winControl.element);
+                }
             }
         }
     },
@@ -993,18 +1014,20 @@ var ControlSpecs = {
             children: PropHandlers.mountTo(function (winjsComponent) {
                 return winjsComponent.winControl.element;
             }),
-            contentComponent: function (winjsComponent, propValue) {
-                if (!winjsComponent.winControl.contentElement) {
-                    winjsComponent.winControl.contentElement = document.createElement("div");
+            contentComponent: {
+                update: function (winjsComponent, propName, oldValue, newValue) {
+                    if (!winjsComponent.winControl.contentElement) {
+                        winjsComponent.winControl.contentElement = document.createElement("div");
+                    }
+                    React.render(newValue, winjsComponent.winControl.contentElement);
                 }
-                React.render(propValue, winjsComponent.winControl.contentElement);
             }
         }
     }
-};
+});
 
-Object.keys(ControlSpecs).forEach(function (controlName) {
-    defineControl(controlName, ControlSpecs[controlName]);
+Object.keys(ControlApis).forEach(function (controlName) {
+    ReactWinJS[controlName] = defineControl(controlName, ControlApis[controlName]);
 });
 
 // Given a function that returns a React component,
