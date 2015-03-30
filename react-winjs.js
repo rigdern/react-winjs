@@ -578,7 +578,8 @@ function processChildren(componentDisplayName, children, childComponentsMap) {
                     "when inside of a " + componentDisplayName + " component"
                 );
             } else {
-                // TODO: Handle deletion/dispose and changing of component type
+                // TODO: Dispose and make a new WinJSChildComponent when component
+                // type changes
                 var winjsChildComponent = childComponentsMap[component.key];
                 if (winjsChildComponent) {
                     winjsChildComponent.update(component);
@@ -590,6 +591,13 @@ function processChildren(componentDisplayName, children, childComponentsMap) {
             }
         }
     });
+
+    Object.keys(childComponentsMap).forEach(function (key) {
+        if (!newChildComponentsMap.hasOwnProperty(key)) {
+            childComponentsMap[key].dispose();
+        }
+    });
+
     return {
         childComponents: newChildComponents,
         childComponentsMap: newChildComponentsMap
@@ -746,11 +754,16 @@ function defineControl(controlName, options) {
         });
     }
 
+    function disposeWinJSComponent(winjsComponent) {
+        winjsComponent.winControl.dispose && winjsComponent.winControl.dispose();
+    }
+
     return React.createClass({
         displayName: displayName,
         statics: {
             initWinJSComponent: initWinJSComponent,
-            updateWinJSComponent: updateWinJSComponent
+            updateWinJSComponent: updateWinJSComponent,
+            disposeWinJSComponent: disposeWinJSComponent
         },
         shouldComponentUpdate: function () {
             return false;
@@ -762,7 +775,7 @@ function defineControl(controlName, options) {
             initWinJSComponent(this, this.getDOMNode(), this.props);
         },
         componentWillUnmount: function () {
-            this.winControl.dispose && this.winControl.dispose();
+            disposeWinJSComponent(this);
         },
         componentWillReceiveProps: function (nextProps) {
             updateWinJSComponent(this, this.props, nextProps);
@@ -797,10 +810,14 @@ function WinJSChildComponent(component) { // implements IWinJSChildComponent
     component.type.initWinJSComponent(this, element, component.props);
     this.key = component.key;
     this._props = component.props;
+    this._disposeWinJSComponent = component.type.disposeWinJSComponent;
 };
 WinJSChildComponent.prototype.update = function (component) {
     component.type.updateWinJSComponent(this, this._props, component.props);
     this._props = component.props;
+};
+WinJSChildComponent.prototype.dispose = function () {
+    this._disposeWinJSComponent(this);
 };
 
 var DefaultControlApis = (function processRawApis() {
