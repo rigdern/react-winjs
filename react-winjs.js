@@ -41,6 +41,17 @@
 //   - Initialize-only parameters (e.g. Command's type). Ideally, the control would just
 //     rerender/reinstantiate itself as needed but I'm not sure how to do that in the
 //     ICommand.type case.
+// - Consider splitting AppBarCommand into multiple components, one for each type. That way
+//   we can get rid of type (which is a weird prop because it is initialize-only) and
+//   instead you use a different component when you want a different type. We can also warn
+//   when you use props that aren't associated with that type of AppBarCommand. For example,
+//   you'll get a warning if you use the flyout prop with a button command. Also considering
+//   exposing the commands like this to make it obvious which control they should be used with:
+//     - AppBar.Button
+//     - AppBar.Separator
+//     - AppBar.Toggle
+//     - AppBar.FlyoutCommand
+//     - AppBar.ContentCommand
 
 var React = require('react/addons');
 
@@ -952,9 +963,14 @@ var ControlApis = updateWithDefaults({
     },
     // ListLayout: Not a component so just use off of WinJS.UI?
     ListView: {},
+    // TODO: Keyboarding doesn't work in Menu probably because MenuCommands are not direct
+    // children of the Menu.
     Menu: {
         propHandlers: {
             children: {
+                // children propHandler looks like this rather than using mountTo on
+                // winControl.element because this enables props.children to have
+                // multiple components whereas the other technique restricts it to one.
                 update: function (winjsComponent, propName, oldValue, newValue) {
                     React.render(React.DOM.div(null, newValue), winjsComponent.winControl.element);
                 }
