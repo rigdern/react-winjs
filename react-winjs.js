@@ -474,6 +474,16 @@ function arraysShallowEqual(a, b) {
     }
 }
 
+function nestedSet(obj, path, value) {
+    var parts = path.split(".");
+    var allButLast = parts.slice(0, parts.length - 1);
+    var last = parts[parts.length - 1];
+    var finalObj = allButLast.reduce(function (current, key) {
+        return current[key];
+    }, obj);
+    finalObj[last] = value;
+}
+
 function makeClassSet(className) {
     var classSet = {};
     className && className.split(" ").forEach(function (aClass) {
@@ -719,6 +729,7 @@ function defineControl(controlName, options) {
     var render = options.render || function (component) {
         return React.DOM.div();
     };
+    var winjsControlName = options.underlyingControlName || controlName;
     var displayName = controlName;
 
     function initWinJSComponent(winjsComponent, element, props) {
@@ -734,7 +745,7 @@ function defineControl(controlName, options) {
                 options[kvPair.key] = kvPair.value;
             }
         });
-        winjsComponent.winControl = new WinJS.UI[controlName](element, options);        
+        winjsComponent.winControl = new WinJS.UI[winjsControlName](element, options);        
 
         // Process propHandlers that don't implement getValueForOptions.
         Object.keys(props).forEach(function (propName) {
@@ -857,9 +868,10 @@ var DefaultControlApis = (function processRawApis() {
 
 function updateWithDefaults(controlApis) {
     Object.keys(controlApis).forEach(function (controlName) {
+        var winjsControlName = controlApis[controlName].underlyingControlName || controlName;
         var spec = controlApis[controlName];
         spec.propHandlers = merge(
-            DefaultControlApis[controlName].propHandlers,
+            DefaultControlApis[winjsControlName].propHandlers,
             spec.propHandlers
         );
     });
@@ -878,7 +890,49 @@ var appBarCommandSpec = {
     }
 };
 
+// TODO: All of these should automatically set the type of the command
+var CommandSpecs = {
+    Button: {
+        underlyingControlName: "AppBarCommand",
+        render: function (component) {
+            return React.DOM.button();
+        }
+    },
+    Toggle: {
+        underlyingControlName: "AppBarCommand",
+        render: function (component) {
+            return React.DOM.button();
+        }
+    },
+    Separator: {
+        underlyingControlName: "AppBarCommand",
+        render: function (component) {
+            return React.DOM.hr();
+        }
+    },
+    ContentCommand: {
+        underlyingControlName: "AppBarCommand",
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.element;
+            })
+        }
+    },
+    // TODO: Need to be able to specify flyoutComponent
+    FlyoutCommand: {
+        underlyingControlName: "AppBarCommand",
+        render: function (component) {
+            return React.DOM.button();
+        }
+    }
+};
+
 var ControlApis = updateWithDefaults({
+    "AppBar.Button": CommandSpecs.Button,
+    "AppBar.Toggle": CommandSpecs.Toggle,
+    "AppBar.Separator": CommandSpecs.Separator,
+    "AppBar.ContentCommand": CommandSpecs.ContentCommand,
+    "AppBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     AppBar: {
         propHandlers: {
             children: {
@@ -1059,8 +1113,10 @@ var ControlApis = updateWithDefaults({
     }
 });
 
-Object.keys(ControlApis).forEach(function (controlName) {
-    ReactWinJS[controlName] = defineControl(controlName, ControlApis[controlName]);
+// Sort to ensure that controls come before their subcontrols
+// (e.g. AppBar comes before AppBar.Toggle).
+Object.keys(ControlApis).sort().forEach(function (controlName) {
+    nestedSet(ReactWinJS, controlName, defineControl(controlName, ControlApis[controlName]));
 });
 
 // Given a function that returns a React component,
