@@ -484,6 +484,11 @@ function nestedSet(obj, path, value) {
     finalObj[last] = value;
 }
 
+function deparent(element) {
+    var parent = element.parentNode;
+    parent && parent.removeChild(element);
+}
+
 function makeClassSet(className) {
     var classSet = {};
     className && className.split(" ").forEach(function (aClass) {
@@ -718,6 +723,13 @@ var PropHandlers = {
                     winjsChildComponents: latest.childComponents,
                     winjsChildComponentsMap: latest.childComponentsMap
                 };
+            },
+            dispose: function syncChildrenWithBindingList_dispose(winjsComponent, propName) {
+                var data = winjsComponent.data[propName] || {};
+                var childComponents = data.winjsChildComponents || [];
+                childComponents.forEach(function (winjsChildComponent) {
+                    winjsChildComponent.dispose();
+                });
             }
         }
     }
@@ -778,6 +790,10 @@ function defineControl(controlName, options) {
 
     function disposeWinJSComponent(winjsComponent) {
         winjsComponent.winControl.dispose && winjsComponent.winControl.dispose();
+        Object.keys(propHandlers).forEach(function (propName) {
+            var handler = propHandlers[propName];
+            handler.dispose && handler.dispose(winjsComponent, propName);
+        })
     }
 
     return React.createClass({
@@ -918,11 +934,37 @@ var CommandSpecs = {
             })
         }
     },
-    // TODO: Need to be able to specify flyoutComponent
     FlyoutCommand: {
         underlyingControlName: "AppBarCommand",
         render: function (component) {
             return React.DOM.button();
+        },
+        propHandlers: {
+            flyoutComponent: {
+                update: function FlyoutCommand_flyoutComponent_update(winjsComponent, propName, oldValue, newValue) {
+                    var data = winjsComponent.data[propName];
+                    if (!data) {
+                        var flyoutHost = document.createElement("div");
+                        flyoutHost.className = "win-react-flyout-host";
+                        document.body.appendChild(flyoutHost);
+                        winjsComponent.data[propName] = data = {
+                            flyoutHost: flyoutHost,
+                            flyoutControl: null
+                        };
+                    }
+                    var instance = React.render(newValue, data.flyoutHost);
+                    if (data.flyoutControl !== instance.winControl) {
+                        winjsComponent.winControl.flyout = instance.winControl;
+                    }
+                    winjsComponent.data[propName].flyoutControl = instance.winControl;
+                },
+                dispose: function FlyoutCommand_flyoutComponent_dispose(winjsComponent, propName) {
+                    var data = winjsComponent.data[propName];
+                    if (data && data.flyoutHost) {
+                        deparent(data.flyoutHost);
+                    }
+                }
+            }
         }
     }
 };
@@ -936,6 +978,20 @@ var ControlApis = updateWithDefaults({
     AppBar: {
         propHandlers: {
             children: {
+                getValueForOptions: function AppBar_children_getValueForOptions(winjsComponent, propName, value) {
+                    var latest = processChildren(winjsComponent.displayName, value, {});
+                    winjsComponent.data[propName] = {
+                        winjsChildComponents: latest.childComponents,
+                        winjsChildComponentsMap: latest.childComponentsMap
+                    };
+
+                    return {
+                        key: "commands",
+                        value: latest.childComponents.map(function (winjsChildComponent) {
+                            return winjsChildComponent.winControl;
+                        })
+                    };
+                },
                 update: function AppBar_children_update(winjsComponent, propName, oldValue, newValue) {
                     var data = winjsComponent.data[propName] || {};
                     var oldChildComponents = data.winjsChildComponents || [];
@@ -952,6 +1008,13 @@ var ControlApis = updateWithDefaults({
                             winjsChildComponentsMap: latest.childComponentsMap
                         };
                     }
+                },
+                dispose: function AppBar_children_dispose(winjsComponent, propName) {
+                    var data = winjsComponent.data[propName] || {};
+                    var childComponents = data.winjsChildComponents || [];
+                    childComponents.forEach(function (winjsChildComponent) {
+                        winjsChildComponent.dispose();
+                    });
                 }
             }
         }
