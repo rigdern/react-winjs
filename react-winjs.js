@@ -588,6 +588,7 @@ function applyEditsToBindingList(list, edits) {
 
 // interface IWinJSChildComponent extends IWinJSComponent {
 //     key
+//     type
 // }
 
 function processChildren(componentDisplayName, children, childComponentsMap) {
@@ -610,11 +611,14 @@ function processChildren(componentDisplayName, children, childComponentsMap) {
                     "when inside of a " + componentDisplayName + " component"
                 );
             } else {
-                // TODO: Dispose and make a new WinJSChildComponent when component
-                // type changes
                 var winjsChildComponent = childComponentsMap[component.key];
                 if (winjsChildComponent) {
-                    winjsChildComponent.update(component);
+                    if (winjsChildComponent.type === component.type) {
+                        winjsChildComponent.update(component);
+                    } else {
+                        winjsChildComponent.dispose();
+                        winjsChildComponent = new WinJSChildComponent(component);
+                    }
                 } else {
                     winjsChildComponent = new WinJSChildComponent(component);
                 }
@@ -861,6 +865,7 @@ function WinJSChildComponent(component) { // implements IWinJSChildComponent
     var element = renderRootlessComponent(clonedComponent);
     component.type.initWinJSComponent(this, element, component.props);
     this.key = component.key;
+    this.type = component.type;
     this._props = component.props;
     this._disposeWinJSComponent = component.type.disposeWinJSComponent;
 };
@@ -1030,6 +1035,12 @@ var ControlApis = updateWithDefaults({
                     var latest = processChildren(winjsComponent.displayName, newValue, oldChildComponentsMap);
 
                     if (!arraysShallowEqual(oldChildComponents, latest.childComponents)) {
+                        // TODO: There's currently a bug here because AppBar disposes all
+                        // current commands when setting commands even when some of the current
+                        // commands are in the new commands array. Maybe not worth finding a
+                        // workaround because WinJS's AppBar implementation is changing soon
+                        // and when that happens, we should be able to just use
+                        // syncChildrenWithBindingList.
                         winjsComponent.winControl.commands = latest.childComponents.map(function (winjsChildComponent) {
                             return winjsChildComponent.winControl;
                         });
