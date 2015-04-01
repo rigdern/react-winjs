@@ -444,6 +444,12 @@ function isEvent(propName) {
     return propName[0] === "o" && propName[1] === "n";
 }
 
+function cloneObject(obj) {
+    var result = {};
+    for (k in obj) { result[k] = obj[k]; }
+    return result;
+}
+
 function merge(a, b) {
     var result = {};
     if (a) {
@@ -676,6 +682,13 @@ var PropHandlers = {
             }
         }
     },
+    warn: function PropHandlers_warn(warnMessage) {
+        return {
+            update: function warn_update(winjsComponent, propName, oldValue, newValue) {
+                console.warn(winjsComponent.displayName + ": " + warnMessage);
+            }
+        };
+    },
     mountTo: function PropHandlers_mountTo(getMountPoint) {
         return {
             update: function mountTo_update(winjsComponent, propName, oldValue, newValue) {
@@ -737,6 +750,7 @@ var PropHandlers = {
 
 function defineControl(controlName, options) {
     options = options || {};
+    var winControlOptions = options.winControlOptions || {};
     var propHandlers = options.propHandlers || {};
     var render = options.render || function (component) {
         return React.DOM.div();
@@ -749,7 +763,7 @@ function defineControl(controlName, options) {
         winjsComponent.displayName = displayName;
 
         // Use propHandlers that implement getValueForOptions to generate control options.
-        var options = {};
+        var options = cloneObject(winControlOptions);
         Object.keys(props).forEach(function (propName) {
             var getValueForOptions = propHandlers[propName] && propHandlers[propName].getValueForOptions;
             if (getValueForOptions) {
@@ -906,29 +920,44 @@ var appBarCommandSpec = {
     }
 };
 
-// TODO: All of these should automatically set the type of the command
+var typeWarnPropHandler = PropHandlers.warn("Invalid prop 'type'. Instead, the command type is" +
+    " determined by the component: Button, Toggle, Separator, ContentCommand, FlyoutCommand.");
 var CommandSpecs = {
     Button: {
         underlyingControlName: "AppBarCommand",
+        winControlOptions: { type: "button" },
         render: function (component) {
             return React.DOM.button();
+        },
+        propHandlers: {
+            type: typeWarnPropHandler,
         }
     },
     Toggle: {
         underlyingControlName: "AppBarCommand",
+        winControlOptions: { type: "toggle" },
         render: function (component) {
             return React.DOM.button();
+        },
+        propHandlers: {
+            type: typeWarnPropHandler
         }
     },
     Separator: {
         underlyingControlName: "AppBarCommand",
+        winControlOptions: { type: "separator" },
         render: function (component) {
             return React.DOM.hr();
+        },
+        propHandlers: {
+            type: typeWarnPropHandler
         }
     },
     ContentCommand: {
         underlyingControlName: "AppBarCommand",
+        winControlOptions: { type: "content" },
         propHandlers: {
+            type: typeWarnPropHandler,
             children: PropHandlers.mountTo(function (winjsComponent) {
                 return winjsComponent.winControl.element;
             })
@@ -936,10 +965,12 @@ var CommandSpecs = {
     },
     FlyoutCommand: {
         underlyingControlName: "AppBarCommand",
+        winControlOptions: { type: "flyout" },
         render: function (component) {
             return React.DOM.button();
         },
         propHandlers: {
+            type: typeWarnPropHandler,
             flyoutComponent: {
                 update: function FlyoutCommand_flyoutComponent_update(winjsComponent, propName, oldValue, newValue) {
                     var data = winjsComponent.data[propName];
