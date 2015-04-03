@@ -985,19 +985,21 @@ var CommandSpecs = {
                         document.body.appendChild(flyoutHost);
                         winjsComponent.data[propName] = data = {
                             flyoutHost: flyoutHost,
-                            flyoutControl: null
+                            flyoutComponent: null
                         };
                     }
+                    var oldWinControl = data.flyoutComponent && data.flyoutComponent.winControl;
                     var instance = React.render(newValue, data.flyoutHost);
-                    if (data.flyoutControl !== instance.winControl) {
+                    if (oldWinControl !== instance.winControl) {
                         winjsComponent.winControl.flyout = instance.winControl;
                     }
-                    winjsComponent.data[propName].flyoutControl = instance.winControl;
+                    winjsComponent.data[propName].flyoutComponent = instance;
                 },
                 dispose: function FlyoutCommand_flyoutComponent_dispose(winjsComponent, propName) {
                     var data = winjsComponent.data[propName];
-                    if (data && data.flyoutHost) {
-                        deparent(data.flyoutHost);
+                    if (data) {
+                        data.flyoutComponent && ReactWinJS.Flyout.disposeWinJSComponent(data.flyoutComponent);
+                        data.flyoutHost && deparent(data.flyoutHost);
                     }
                 }
             }
