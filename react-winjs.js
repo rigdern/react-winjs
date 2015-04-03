@@ -1198,6 +1198,11 @@ var ControlApis = updateWithDefaults({
     },
     TimePicker: {},
     ToggleSwitch: {},
+    "ToolBar.Button": CommandSpecs.Button,
+    "ToolBar.Toggle": CommandSpecs.Toggle,
+    "ToolBar.Separator": CommandSpecs.Separator,
+    "ToolBar.ContentCommand": CommandSpecs.ContentCommand,
+    "ToolBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     ToolBar: {
         propHandlers: {
             children: PropHandlers.syncChildrenWithBindingList("data")
