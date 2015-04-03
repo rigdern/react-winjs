@@ -997,9 +997,9 @@ var CommandSpecs = {
                 },
                 dispose: function FlyoutCommand_flyoutComponent_dispose(winjsComponent, propName) {
                     var data = winjsComponent.data[propName];
-                    if (data) {
-                        data.flyoutComponent && ReactWinJS.Flyout.disposeWinJSComponent(data.flyoutComponent);
-                        data.flyoutHost && deparent(data.flyoutHost);
+                    if (data && data.flyoutHost) {
+                        React.unmountComponentAtNode(data.flyoutHost);
+                        deparent(data.flyoutHost);
                     }
                 }
             }
