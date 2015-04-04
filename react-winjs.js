@@ -1008,11 +1008,6 @@ var CommandSpecs = {
 };
 
 var ControlApis = updateWithDefaults({
-    "AppBar.Button": CommandSpecs.Button,
-    "AppBar.Toggle": CommandSpecs.Toggle,
-    "AppBar.Separator": CommandSpecs.Separator,
-    "AppBar.ContentCommand": CommandSpecs.ContentCommand,
-    "AppBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     AppBar: {
         propHandlers: {
             children: {
@@ -1063,6 +1058,11 @@ var ControlApis = updateWithDefaults({
             }
         }
     },
+    "AppBar.Button": CommandSpecs.Button,
+    "AppBar.Toggle": CommandSpecs.Toggle,
+    "AppBar.Separator": CommandSpecs.Separator,
+    "AppBar.ContentCommand": CommandSpecs.ContentCommand,
+    "AppBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     // TODO: Can't change AppBarCommand.type on the fly (initialize only)
     // TODO: AppBarCommand.flyout doesn't work
     AppBarCommand: appBarCommandSpec,
@@ -1138,6 +1138,18 @@ var ControlApis = updateWithDefaults({
             }
         }
     },
+    "Menu.Button": merge(CommandSpecs.Button, {
+        underlyingControlName: "MenuCommand"
+    }),
+    "Menu.Toggle": merge(CommandSpecs.Toggle, {
+        underlyingControlName: "MenuCommand"
+    }),
+    "Menu.Separator": merge(CommandSpecs.Separator, {
+        underlyingControlName: "MenuCommand"
+    }),
+    "Menu.FlyoutCommand": merge(CommandSpecs.FlyoutCommand, {
+        underlyingControlName: "MenuCommand"
+    }),
     // TODO: Can't change MenuCommand.type on the fly (initialize only)
     // TODO: MenuCommand.flyout doesn't work
     MenuCommand: {
@@ -1198,16 +1210,16 @@ var ControlApis = updateWithDefaults({
     },
     TimePicker: {},
     ToggleSwitch: {},
-    "ToolBar.Button": CommandSpecs.Button,
-    "ToolBar.Toggle": CommandSpecs.Toggle,
-    "ToolBar.Separator": CommandSpecs.Separator,
-    "ToolBar.ContentCommand": CommandSpecs.ContentCommand,
-    "ToolBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     ToolBar: {
         propHandlers: {
             children: PropHandlers.syncChildrenWithBindingList("data")
         }
     },
+    "ToolBar.Button": CommandSpecs.Button,
+    "ToolBar.Toggle": CommandSpecs.Toggle,
+    "ToolBar.Separator": CommandSpecs.Separator,
+    "ToolBar.ContentCommand": CommandSpecs.ContentCommand,
+    "ToolBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
     Tooltip: {
         propHandlers: {
             children: PropHandlers.mountTo(function (winjsComponent) {
