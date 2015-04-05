@@ -1108,6 +1108,14 @@ var ControlApis = updateWithDefaults({
             children: PropHandlers.syncChildrenWithBindingList("sections")
         }
     },
+    "Hub.Section": {
+        underlyingControlName: "HubSection",
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.contentElement;
+            })
+        }
+    },
     HubSection: {
         propHandlers: {
             children: PropHandlers.mountTo(function (winjsComponent) {
@@ -1186,6 +1194,14 @@ var ControlApis = updateWithDefaults({
     Pivot: {
         propHandlers: {
             children: PropHandlers.syncChildrenWithBindingList("items")
+        }
+    },
+    "Pivot.Item": {
+        underlyingControlName: "PivotItem",
+        propHandlers: {
+            children: PropHandlers.mountTo(function (winjsComponent) {
+                return winjsComponent.winControl.contentElement;
+            })
         }
     },
     PivotItem: {
