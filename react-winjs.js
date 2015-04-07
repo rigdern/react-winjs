@@ -582,6 +582,7 @@ function applyEditsToBindingList(list, edits) {
 
 // interface IWinJSComponent {
 //     winControl
+//     element
 //     data
 //     displayName
 // }
@@ -765,14 +766,17 @@ function defineControl(controlName, options) {
     function initWinJSComponent(winjsComponent, element, props) {
         winjsComponent.data = {};
         winjsComponent.displayName = displayName;
+        winjsComponent.element = element;
 
         // Use propHandlers that implement getValueForOptions to generate control options.
         var options = cloneObject(winControlOptions);
         Object.keys(props).forEach(function (propName) {
             var getValueForOptions = propHandlers[propName] && propHandlers[propName].getValueForOptions;
             if (getValueForOptions) {
-                var kvPair = getValueForOptions(winjsComponent, propName, props[propName]);
-                options[kvPair.key] = kvPair.value;
+                var kvPair = getValueForOptions(winjsComponent, propName, props[propName], element);
+                if (kvPair) {
+                    options[kvPair.key] = kvPair.value;
+                }
             }
         });
         winjsComponent.winControl = new WinJS.UI[winjsControlName](element, options);        
@@ -1213,7 +1217,44 @@ var ControlApis = updateWithDefaults({
     },
     Rating: {},
     SearchBox: {},
-    // TODO: SemanticZoom
+    SemanticZoom: {
+        propHandlers: {
+            zoomedInComponent: {
+                getValueForOptions: function zoomedInComponent_getValueForOptions(winjsComponent, propName, value) {
+                    // TODO: Strange that this doesn't return a value and is only used for its side effect.
+                    var child = new WinJSChildComponent(value);
+                    // Zoomed in component should be the first child.
+                    winjsComponent.element.insertBefore(child.winControl.element, winjsComponent.element.firstElementChild);
+                    winjsComponent.data[propName] = child;
+                },
+                update: function zoomedInComponent_update(winjsComponent, propName, oldValue, newValue) {
+                    var child = winjsComponent.data[propName];
+                    if (child.type === newValue.type) {
+                        child.update(newValue);
+                    } else {
+                        console.warn("SemanticZoom: zoomedInComponent's component type can't change");
+                    }
+                }
+            },
+            zoomedOutComponent: {
+                getValueForOptions: function zoomedOutComponent_getValueForOptions(winjsComponent, propName, value) {
+                    // TODO: Strange that this doesn't return a value and is only used for its side effect.
+                    var child = new WinJSChildComponent(value);
+                    // Zoomed out component should be the second child.
+                    winjsComponent.element.appendChild(child.winControl.element);
+                    winjsComponent.data[propName] = child;
+                },
+                update: function zoomedOutComponent_update(winjsComponent, propName, oldValue, newValue) {
+                    var child = winjsComponent.data[propName];
+                    if (child.type === newValue.type) {
+                        child.update(newValue);
+                    } else {
+                        console.warn("SemanticZoom: zoomedOutComponent's component type can't change");
+                    }
+                }
+            }
+        }
+    },
     SplitView: {
         propHandlers: {
             paneComponent: PropHandlers.mountTo(function (winjsComponent) {
