@@ -1234,6 +1234,10 @@ var ControlApis = updateWithDefaults({
                     } else {
                         console.warn("SemanticZoom: zoomedInComponent's component type can't change");
                     }
+                },
+                dispose: function zoomedInComponent_dispose(winjsComponent, propName) {
+                    var child = winjsComponent.data[propName];
+                    child && child.dispose();
                 }
             },
             zoomedOutComponent: {
@@ -1251,6 +1255,10 @@ var ControlApis = updateWithDefaults({
                     } else {
                         console.warn("SemanticZoom: zoomedOutComponent's component type can't change");
                     }
+                },
+                dispose: function zoomedOutComponent_dispose(winjsComponent, propName) {
+                    var child = winjsComponent.data[propName];
+                    child && child.dispose();
                 }
             }
         }
