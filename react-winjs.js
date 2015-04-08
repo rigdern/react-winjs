@@ -687,6 +687,27 @@ var PropHandlers = {
             }
         }
     },
+    //  Enable the addition and removal of inline styles on the root of the winControl
+    //  but don't clobber whatever inline styles the underlying control may have added.
+    winControlStyle: {
+        update: function winControlStyle_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                oldValue = oldValue || {};
+                newValue = newValue || {};
+                var elementStyle = winjsComponent.winControl.element.style;
+                for (var cssProperty in oldValue) {
+                    if (!newValue.hasOwnProperty(cssProperty)) {
+                        elementStyle[cssProperty] = "";
+                    }
+                }
+                for (var cssProperty in newValue) {
+                    if (oldValue[cssProperty] !== newValue[cssProperty]) {
+                        elementStyle[cssProperty] = newValue[cssProperty];
+                    }
+                }
+            }
+        }
+    },
     warn: function PropHandlers_warn(warnMessage) {
         return {
             update: function warn_update(winjsComponent, propName, oldValue, newValue) {
@@ -889,7 +910,8 @@ var DefaultControlApis = (function processRawApis() {
     var result = {};
     Object.keys(RawControlApis).forEach(function (controlName) {
         var propHandlers = {
-            className: PropHandlers.winControlClassName
+            className: PropHandlers.winControlClassName,
+            style: PropHandlers.winControlStyle
         };
         RawControlApis[controlName].forEach(function (propName) {
             if (isEvent(propName)) {
