@@ -939,18 +939,6 @@ function updateWithDefaults(controlApis) {
     return controlApis;
 }
 
-var appBarCommandSpec = {
-    render: function (component) {
-        var tagName =
-            component.props.type === "content" ?
-            "div" :
-            component.props.type === "separator" ?
-            "hr" :
-            "button";
-        return React.createElement(tagName);
-    }
-};
-
 var typeWarnPropHandler = PropHandlers.warn("Invalid prop 'type'. Instead, the command type is" +
     " determined by the component: Button, Toggle, Separator, ContentCommand, FlyoutCommand.");
 var CommandSpecs = {
@@ -1089,9 +1077,6 @@ var ControlApis = updateWithDefaults({
     "AppBar.Separator": CommandSpecs.Separator,
     "AppBar.ContentCommand": CommandSpecs.ContentCommand,
     "AppBar.FlyoutCommand": CommandSpecs.FlyoutCommand,
-    // TODO: Can't change AppBarCommand.type on the fly (initialize only)
-    // TODO: AppBarCommand.flyout doesn't work
-    AppBarCommand: appBarCommandSpec,
     AutoSuggestBox: {},
     BackButton: {
         render: function (component) {
@@ -1099,9 +1084,6 @@ var ControlApis = updateWithDefaults({
         }
     },
     // CellSpanningLayout: Not a component so just use off of WinJS.UI?
-    // TODO: Can't change Command.type on the fly (initialize only)
-    // TODO: Command.flyout doesn't work
-    Command: appBarCommandSpec,
     ContentDialog: {
         propHandlers: {
             children: PropHandlers.mountTo(function (winjsComponent) {
@@ -1136,13 +1118,6 @@ var ControlApis = updateWithDefaults({
     },
     "Hub.Section": {
         underlyingControlName: "HubSection",
-        propHandlers: {
-            children: PropHandlers.mountTo(function (winjsComponent) {
-                return winjsComponent.winControl.contentElement;
-            })
-        }
-    },
-    HubSection: {
         propHandlers: {
             children: PropHandlers.mountTo(function (winjsComponent) {
                 return winjsComponent.winControl.contentElement;
@@ -1184,16 +1159,6 @@ var ControlApis = updateWithDefaults({
     "Menu.FlyoutCommand": merge(CommandSpecs.FlyoutCommand, {
         underlyingControlName: "MenuCommand"
     }),
-    // TODO: Can't change MenuCommand.type on the fly (initialize only)
-    // TODO: MenuCommand.flyout doesn't work
-    MenuCommand: {
-        render: function (component) {
-            var tagName = component.props.type === "separator" ?
-                "hr" :
-                "button";
-            return React.createElement(tagName);
-        }
-    },
     NavBar: {
         // The WinJS NavBar control doesn't come with a good mount point.
         // App content and control content are siblings in NavBar.element.
@@ -1224,13 +1189,6 @@ var ControlApis = updateWithDefaults({
     },
     "Pivot.Item": {
         underlyingControlName: "PivotItem",
-        propHandlers: {
-            children: PropHandlers.mountTo(function (winjsComponent) {
-                return winjsComponent.winControl.contentElement;
-            })
-        }
-    },
-    PivotItem: {
         propHandlers: {
             children: PropHandlers.mountTo(function (winjsComponent) {
                 return winjsComponent.winControl.contentElement;
