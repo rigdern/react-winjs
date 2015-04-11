@@ -15,5 +15,8 @@ module.exports = {
     alias: {
       'react-winjs': path.join(__dirname, '../../react-winjs')
     }
+  },
+  externals: {
+    'react/addons': 'React'
   }
 };
