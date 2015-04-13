@@ -668,6 +668,12 @@ var PropHandlers = {
     //  but don't clobber whatever CSS classes the underlying control may have added
     //  (e.g. don't clobber win-listview).
     winControlClassName: {
+        preCtorInit: function winControlClassName_preCtorInit(element, options, data, displayName, propName, value) {
+            if (value) {
+                element.className = value;
+            }
+            data[propName] = makeClassSet(value);
+        },
         update: function winControlClassName_update(winjsComponent, propName, oldValue, newValue) {
             if (oldValue !== newValue) {
                 var oldClassSet = winjsComponent.data[propName] || {};
@@ -690,6 +696,13 @@ var PropHandlers = {
     //  Enable the addition and removal of inline styles on the root of the winControl
     //  but don't clobber whatever inline styles the underlying control may have added.
     winControlStyle: {
+        preCtorInit: function winControlStyle_preCtorInit(element, options, data, displayName, propName, value) {
+            var elementStyle = element.style;
+            value = value || {};
+            for (var cssProperty in value) {
+                elementStyle[cssProperty] = value[cssProperty];
+            }
+        },
         update: function winControlStyle_update(winjsComponent, propName, oldValue, newValue) {
             if (oldValue !== newValue) {
                 oldValue = oldValue || {};
