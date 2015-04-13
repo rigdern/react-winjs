@@ -643,8 +643,8 @@ function processChildren(componentDisplayName, children, childComponentsMap) {
 
 var PropHandlers = {
     property: {
-        getValueForOptions: function property_getValueForOptions(winjsComponent, propName, value) {
-            return { key: propName, value: value };
+        preCtorInit: function property_preCtorInit(element, options, data, displayName, propName, value) {
+            options[propName] = value;
         },
         update: function property_update(winjsComponent, propName, oldValue, newValue) {
             if (oldValue !== newValue) {
@@ -653,7 +653,7 @@ var PropHandlers = {
         }
     },
     event: {
-        // Can't use getValueForOptions for events. The problem is WinJS control options
+        // Can't set options in preCtorInit for events. The problem is WinJS control options
         // use a different code path to hook up events than the event property setters.
         // Consequently, setting an event property will not automatically unhook the event
         // listener that was specified in the options during initialization. To avoid this
@@ -724,21 +724,18 @@ var PropHandlers = {
     },
     syncChildrenWithBindingList: function PropHandlers_syncChildrenWithBindingList(bindingListName) {
         return {
-            getValueForOptions: function syncChildrenWithBindingList_getValueForOptions(winjsComponent, propName, value) {
-                var latest = processChildren(winjsComponent.displayName, value, {});
-                winjsComponent.data[propName] = {
+            preCtorInit: function syncChildrenWithBindingList_preCtorInit(element, options, data, displayName, propName, value) {
+                var latest = processChildren(displayName, value, {});
+                data[propName] = {
                     winjsChildComponents: latest.childComponents,
                     winjsChildComponentsMap: latest.childComponentsMap
                 };
 
-                return {
-                    key: bindingListName,
-                    value: new WinJS.Binding.List(
-                        latest.childComponents.map(function (winjsChildComponent) {
-                            return winjsChildComponent.winControl;
-                        })
-                    )
-                };
+                options[bindingListName] = new WinJS.Binding.List(
+                    latest.childComponents.map(function (winjsChildComponent) {
+                        return winjsChildComponent.winControl;
+                    })
+                );
             },
             update: function syncChildrenWithBindingList_update(winjsComponent, propName, oldValue, newValue) {
                 var data = winjsComponent.data[propName] || {};
@@ -789,23 +786,21 @@ function defineControl(controlName, options) {
         winjsComponent.displayName = displayName;
         winjsComponent.element = element;
 
-        // Use propHandlers that implement getValueForOptions to generate control options.
+        // Give propHandlers that implement preCtorInit the opportunity to run before
+        // instantiating the winControl.
         var options = cloneObject(winControlOptions);
         Object.keys(props).forEach(function (propName) {
-            var getValueForOptions = propHandlers[propName] && propHandlers[propName].getValueForOptions;
-            if (getValueForOptions) {
-                var kvPair = getValueForOptions(winjsComponent, propName, props[propName], element);
-                if (kvPair) {
-                    options[kvPair.key] = kvPair.value;
-                }
+            var preCtorInit = propHandlers[propName] && propHandlers[propName].preCtorInit;
+            if (preCtorInit) {
+                preCtorInit(element, options, winjsComponent.data, displayName, propName, props[propName]);
             }
         });
         winjsComponent.winControl = new WinJS.UI[winjsControlName](element, options);        
 
-        // Process propHandlers that don't implement getValueForOptions.
+        // Process propHandlers that don't implement preCtorInit.
         Object.keys(props).forEach(function (propName) {
             var handler = propHandlers[propName];
-            if (handler && !handler.getValueForOptions) {
+            if (handler && !handler.preCtorInit) {
                 handler.update(winjsComponent, propName, undefined, props[propName]);
             }
         });
@@ -1025,19 +1020,16 @@ var ControlApis = updateWithDefaults({
     AppBar: {
         propHandlers: {
             children: {
-                getValueForOptions: function AppBar_children_getValueForOptions(winjsComponent, propName, value) {
-                    var latest = processChildren(winjsComponent.displayName, value, {});
-                    winjsComponent.data[propName] = {
+                preCtorInit: function AppBar_children_preCtorInit(element, options, data, displayName, propName, value) {
+                    var latest = processChildren(displayName, value, {});
+                    data[propName] = {
                         winjsChildComponents: latest.childComponents,
                         winjsChildComponentsMap: latest.childComponentsMap
                     };
 
-                    return {
-                        key: "commands",
-                        value: latest.childComponents.map(function (winjsChildComponent) {
-                            return winjsChildComponent.winControl;
-                        })
-                    };
+                    options.commands = latest.childComponents.map(function (winjsChildComponent) {
+                        return winjsChildComponent.winControl;
+                    });
                 },
                 update: function AppBar_children_update(winjsComponent, propName, oldValue, newValue) {
                     var data = winjsComponent.data[propName] || {};
@@ -1200,12 +1192,11 @@ var ControlApis = updateWithDefaults({
     SemanticZoom: {
         propHandlers: {
             zoomedInComponent: {
-                getValueForOptions: function zoomedInComponent_getValueForOptions(winjsComponent, propName, value) {
-                    // TODO: Strange that this doesn't return a value and is only used for its side effect.
+                preCtorInit: function zoomedInComponent_preCtorInit(element, options, data, displayName, propName, value) {
                     var child = new WinJSChildComponent(value);
                     // Zoomed in component should be the first child.
-                    winjsComponent.element.insertBefore(child.winControl.element, winjsComponent.element.firstElementChild);
-                    winjsComponent.data[propName] = child;
+                    element.insertBefore(child.winControl.element, element.firstElementChild);
+                    data[propName] = child;
                 },
                 update: function zoomedInComponent_update(winjsComponent, propName, oldValue, newValue) {
                     var child = winjsComponent.data[propName];
@@ -1221,12 +1212,11 @@ var ControlApis = updateWithDefaults({
                 }
             },
             zoomedOutComponent: {
-                getValueForOptions: function zoomedOutComponent_getValueForOptions(winjsComponent, propName, value) {
-                    // TODO: Strange that this doesn't return a value and is only used for its side effect.
+                preCtorInit: function zoomedOutComponent_preCtorInit(element, options, data, displayName, propName, value) {
                     var child = new WinJSChildComponent(value);
                     // Zoomed out component should be the second child.
-                    winjsComponent.element.appendChild(child.winControl.element);
-                    winjsComponent.data[propName] = child;
+                    element.appendChild(child.winControl.element);
+                    data[propName] = child;
                 },
                 update: function zoomedOutComponent_update(winjsComponent, propName, oldValue, newValue) {
                     var child = winjsComponent.data[propName];
