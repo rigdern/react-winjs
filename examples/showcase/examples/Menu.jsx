@@ -22,22 +22,24 @@ module.exports = React.createClass({
         };
     },
     render: function () {
-        var resultComponent = this.state.result ?
-            <div>Clicked: "{this.state.result}"</div> :
-            null;
         var subMenu = (
             <ReactWinJS.Menu>
                 <ReactWinJS.Menu.Button
-                    key="commandA"
+                    key="chooseMeA"
                     label="Or Choose Me"
                     onClick={this.handleUpdateResult.bind(null, "Or Choose Me")} />
+                <ReactWinJS.Menu.Button
+                    key="chooseMeB"
+                    label="No, Choose Me!"
+                    onClick={this.handleUpdateResult.bind(null, "No, Choose Me!")} />
             </ReactWinJS.Menu>
         );
 
         return (
             <div>
                 <button onClick={this.handleShowMenu}>Show Menu</button>
-                {resultComponent}
+                <p>Clicked command: {this.state.result || "<null>"}</p>
+                <p>Toggle selected: {this.state.toggleSelected.toString()}</p>
                 
                 <ReactWinJS.Menu ref="menu">
 
@@ -48,7 +50,7 @@ module.exports = React.createClass({
 
                     <ReactWinJS.Menu.Toggle
                         key="toggleMe"
-                        label={"Toggle Me (selected: " + this.state.toggleSelected.toString() + ")"}
+                        label="Toggle Me"
                         selected={this.state.toggleSelected}
                         onClick={this.handleToggleMe} />
 

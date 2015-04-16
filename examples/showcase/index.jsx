@@ -19,20 +19,33 @@ var examples = [
     { title: "Hub", componenent: require('./examples/Hub.jsx') },
     { title: "ItemContainer", componenent: require('./examples/ItemContainer.jsx') },
     //{ title: "ListView", componenent: require('./examples/ListView.jsx') },
-    { title: "Menu", componenent: require('./examples/Menu.jsx') }
+    { title: "Menu", componenent: require('./examples/Menu.jsx') },
+    { title: "NavBar", componenent: require('./examples/NavBar.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +
     "showcase/examples/";
 var styles = {
     viewport: { height: "100%", overflow: "auto" },
-    surface: { paddingBottom: 48 + 10 }, // Leave room for bottom AppBar
+    surface: { paddingBottom: 96 + 10 }, // Leave room for bottom AppBar/NavBar
     example: { paddingBottom: 30 },
     exampleTitle: { paddingBottom: 10 },
     sourceLink: { paddingLeft: 5 }
 };
 
 var App = React.createClass({
+    handleToggleAppBar: function (exampleTitle) {
+        this.setState({
+            exampleWithAppBar: this.state.exampleWithAppBar === exampleTitle ? null : exampleTitle
+        });
+    },
+    getInitialState: function () {
+        return {
+            // To prevent AppBars from occluding each other, only one example
+            // should show an AppBar at a time.
+            exampleWithAppBar: null
+        };
+    },
     render: function() {
         var tableOfContents = examples.map(function (example) {
             return <li><a href={"#" + example.title}>{example.title}</a></li>;
@@ -52,10 +65,12 @@ var App = React.createClass({
                             (view source)
                         </a>
                     </h3>
-                    <example.componenent />
+                    <example.componenent
+                        appBarShown={this.state.exampleWithAppBar === example.title}
+                        onToggleAppBar={this.handleToggleAppBar.bind(null, example.title)} />
                 </div>
             );
-        });
+        }, this);
 
         return (
             <div className="viewport" style={styles.viewport}>
