@@ -17,7 +17,9 @@ var examples = [
     { title: "FlipView", componenent: require('./examples/FlipView.jsx') },
     { title: "Flyout", componenent: require('./examples/Flyout.jsx') },
     { title: "Hub", componenent: require('./examples/Hub.jsx') },
-    { title: "ItemContainer", componenent: require('./examples/ItemContainer.jsx') }
+    { title: "ItemContainer", componenent: require('./examples/ItemContainer.jsx') },
+    //{ title: "ListView", componenent: require('./examples/ListView.jsx') },
+    { title: "Menu", componenent: require('./examples/Menu.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +
