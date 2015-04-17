@@ -21,7 +21,8 @@ var examples = [
     //{ title: "ListView", componenent: require('./examples/ListView.jsx') },
     { title: "Menu", componenent: require('./examples/Menu.jsx') },
     { title: "NavBar", componenent: require('./examples/NavBar.jsx') },
-    { title: "Pivot", componenent: require('./examples/Pivot.jsx') }
+    { title: "Pivot", componenent: require('./examples/Pivot.jsx') },
+    { title: "Rating", componenent: require('./examples/Rating.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +
@@ -62,6 +63,7 @@ var App = React.createClass({
                         <a
                             style={styles.sourceLink}
                             href={sourceUrl}
+                            target="_blank"
                             className="win-type-x-small">
                             (view source)
                         </a>
