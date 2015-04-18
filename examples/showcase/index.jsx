@@ -22,7 +22,8 @@ var examples = [
     { title: "Menu", componenent: require('./examples/Menu.jsx') },
     { title: "NavBar", componenent: require('./examples/NavBar.jsx') },
     { title: "Pivot", componenent: require('./examples/Pivot.jsx') },
-    { title: "Rating", componenent: require('./examples/Rating.jsx') }
+    { title: "Rating", componenent: require('./examples/Rating.jsx') },
+    { title: "SearchBox", componenent: require('./examples/SearchBox.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +

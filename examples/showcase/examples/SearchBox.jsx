@@ -45,7 +45,7 @@ module.exports = React.createClass({
     render: function () {
         return (
             <div>
-                <ReactWinJS.AutoSuggestBox
+                <ReactWinJS.SearchBox
                     placeholderText="Type a city"
                     onSuggestionsRequested={this.handleSuggestionsRequested}
                     onQuerySubmitted={this.handleQuerySubmitted} />
