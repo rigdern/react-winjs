@@ -23,7 +23,10 @@ var examples = [
     { title: "NavBar", componenent: require('./examples/NavBar.jsx') },
     { title: "Pivot", componenent: require('./examples/Pivot.jsx') },
     { title: "Rating", componenent: require('./examples/Rating.jsx') },
-    { title: "SearchBox", componenent: require('./examples/SearchBox.jsx') }
+    { title: "SearchBox", componenent: require('./examples/SearchBox.jsx') },
+    //{ title: "SemanticZoom", componenent: require('./examples/SemanticZoom.jsx') },
+    //{ title: "SplitView", componenent: require('./examples/SplitView.jsx') },
+    { title: "TimePicker", componenent: require('./examples/TimePicker.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +
