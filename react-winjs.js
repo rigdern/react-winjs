@@ -322,7 +322,8 @@ var RawControlApis = {
         "splitButton",
         "splitOpened",
         "state",
-        "tooltip"
+        "tooltip",
+        "onClick"
     ],
     NavBarContainer: [
         "currentIndex",
