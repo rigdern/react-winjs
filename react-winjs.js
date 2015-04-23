@@ -57,6 +57,10 @@ var React = require('react/addons');
 
 var ReactWinJS = {};
 
+var UseDOMEventWireupFor = {
+    NavBarCommand: { onClick: true }
+};
+
 // Generated from https://github.com/rigdern/winjs-control-apis
 var RawControlApis = {
     AppBar: [
@@ -665,6 +669,16 @@ var PropHandlers = {
             }
         }
     },
+    domEvent: {
+        // See "event.update" for information, this overload is to move the 
+        // event wire up to the DOM element instead of the winControl
+        //
+        update: function event_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                winjsComponent.winControl.element[propName.toLowerCase()] = newValue;
+            }
+        }
+    },    
     //  Enable the addition and removal of CSS classes on the root of the winControl
     //  but don't clobber whatever CSS classes the underlying control may have added
     //  (e.g. don't clobber win-listview).
@@ -924,7 +938,12 @@ var DefaultControlApis = (function processRawApis() {
         };
         RawControlApis[controlName].forEach(function (propName) {
             if (isEvent(propName)) {
-                propHandlers[propName] = PropHandlers.event;
+                if(UseDOMEventWireupFor[controlName] && UseDOMEventWireupFor[controlName][propName]) {
+                    propHandlers[propName] = PropHandlers.domEvent
+                }
+                else {
+                    propHandlers[propName] = PropHandlers.event;
+                }
             } else if (keepProperty(propName)) {
                 propHandlers[propName] = PropHandlers.property;
             }
