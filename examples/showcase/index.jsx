@@ -28,7 +28,8 @@ var examples = [
     //{ title: "SplitView", componenent: require('./examples/SplitView.jsx') },
     { title: "TimePicker", componenent: require('./examples/TimePicker.jsx') },
     { title: "ToggleSwitch", componenent: require('./examples/ToggleSwitch.jsx') },
-    { title: "ToolBar", componenent: require('./examples/ToolBar.jsx') }
+    { title: "ToolBar", componenent: require('./examples/ToolBar.jsx') },
+    { title: "Tooltip", componenent: require('./examples/Tooltip.jsx') }
 ];
 
 var baseSourceUrl = "https://github.com/rigdern/react-winjs/tree/master/examples/" +
