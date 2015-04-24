@@ -652,6 +652,16 @@ var PropHandlers = {
             }
         }
     },
+    domProperty: {
+        preCtorInit: function domProperty_preCtorInit(element, options, data, displayName, propName, value) {
+            element[propName] = value;
+        },
+        update: function domProperty_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                winjsComponent.element[propName] = newValue;
+            }
+        }
+    },
     event: {
         // Can't set options in preCtorInit for events. The problem is WinJS control options
         // use a different code path to hook up events than the event property setters.
@@ -661,6 +671,16 @@ var PropHandlers = {
         update: function event_update(winjsComponent, propName, oldValue, newValue) {
             if (oldValue !== newValue) {
                 winjsComponent.winControl[propName.toLowerCase()] = newValue;
+            }
+        }
+    },
+    domEvent: {
+        preCtorInit: function domEvent_preCtorInit(element, options, data, displayName, propName, value) {
+            element[propName.toLowerCase()] = value;
+        },
+        update: function domEvent_update(winjsComponent, propName, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                winjsComponent.element[propName.toLowerCase()] = newValue;
             }
         }
     },
@@ -919,7 +939,10 @@ var DefaultControlApis = (function processRawApis() {
     Object.keys(RawControlApis).forEach(function (controlName) {
         var propHandlers = {
             className: PropHandlers.winControlClassName,
-            style: PropHandlers.winControlStyle
+            style: PropHandlers.winControlStyle,
+            // TODO: Instead of special casing id, support DOM attributes
+            // more generically.
+            id: PropHandlers.domProperty
         };
         RawControlApis[controlName].forEach(function (propName) {
             if (isEvent(propName)) {
@@ -1181,7 +1204,13 @@ var ControlApis = updateWithDefaults({
             })
         }
     },
-    NavBarCommand: {},
+    NavBarCommand: {
+        propHandlers: {
+            // TODO: Instead of special casing onClick, support DOM attributes
+            // more generically.
+            onClick: PropHandlers.domEvent
+        }
+    },
     NavBarContainer: {
         propHandlers: {
             children: PropHandlers.syncChildrenWithBindingList("data")
