@@ -2,6 +2,8 @@
 // - What's the most common way to distribute React components? webpack? requirejs?
 // - React appears to restore focus after componentWillReceiveProps. This is problematic for
 //   overlays like Flyout that are synchronously shown and take focus in componentWillReceiveProps.
+//   Maybe treat props such as hidden/opened as special and set them outside of React component
+//   lifecycle so that focus movements work properly.
 // - propTypes
 // - Should React be listed as a peerDependency instead of as a dependency?
 // - Does this project need a webpack config file?
@@ -35,23 +37,8 @@
 //       displayNone={this.state.shouldHideListViewAtThisScreenSize}
 //       itemDataSource={this.state.itemDataSource}
 //       itemTemplate={this.itemTemplate} />
-// - Should have special initialization propHandlers that would get to influence what gets
-//   passed in the options parameter to the control's constructer? Use cases:
-//   - Initialize Hub's BindingList (rather than editing it immediately after construction)
-//   - Initialize-only parameters (e.g. Command's type). Ideally, the control would just
-//     rerender/reinstantiate itself as needed but I'm not sure how to do that in the
-//     ICommand.type case.
-// - Consider splitting AppBarCommand into multiple components, one for each type. That way
-//   we can get rid of type (which is a weird prop because it is initialize-only) and
-//   instead you use a different component when you want a different type. We can also warn
-//   when you use props that aren't associated with that type of AppBarCommand. For example,
-//   you'll get a warning if you use the flyout prop with a button command. Also considering
-//   exposing the commands like this to make it obvious which control they should be used with:
-//     - AppBar.Button
-//     - AppBar.Separator
-//     - AppBar.Toggle
-//     - AppBar.FlyoutCommand
-//     - AppBar.ContentCommand
+// - Provide SplitViewButton & SplitViewCommand components or wait for WinJS to provide
+//   the corresponding controls?
 
 var React = require('react/addons');
 
