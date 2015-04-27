@@ -18,7 +18,7 @@ var examples = [
     { title: "Flyout", componenent: require('./examples/Flyout.jsx') },
     { title: "Hub", componenent: require('./examples/Hub.jsx') },
     { title: "ItemContainer", componenent: require('./examples/ItemContainer.jsx') },
-    //{ title: "ListView", componenent: require('./examples/ListView.jsx') },
+    { title: "ListView", componenent: require('./examples/ListView.jsx') },
     { title: "Menu", componenent: require('./examples/Menu.jsx') },
     { title: "NavBar", componenent: require('./examples/NavBar.jsx') },
     { title: "Pivot", componenent: require('./examples/Pivot.jsx') },
