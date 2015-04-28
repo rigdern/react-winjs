@@ -24,7 +24,7 @@ var examples = [
     { title: "Pivot", componenent: require('./examples/Pivot.jsx') },
     { title: "Rating", componenent: require('./examples/Rating.jsx') },
     { title: "SearchBox", componenent: require('./examples/SearchBox.jsx') },
-    //{ title: "SemanticZoom", componenent: require('./examples/SemanticZoom.jsx') },
+    { title: "SemanticZoom", componenent: require('./examples/SemanticZoom.jsx') },
     { title: "SplitView", componenent: require('./examples/SplitView.jsx') },
     { title: "TimePicker", componenent: require('./examples/TimePicker.jsx') },
     { title: "ToggleSwitch", componenent: require('./examples/ToggleSwitch.jsx') },

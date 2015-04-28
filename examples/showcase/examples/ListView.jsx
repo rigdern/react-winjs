@@ -21,7 +21,7 @@ module.exports = React.createClass({
                 { title: "Pineapple" },
                 { title: "Strawberry"}
             ]),
-            layout: new WinJS.UI.ListLayout()
+            layout: { type: WinJS.UI.ListLayout }
         };
     },
     render: function () {
